@@ -7,3 +7,4 @@ settings.json
 *.srs
 input.json
 witness.json
+proof.json
