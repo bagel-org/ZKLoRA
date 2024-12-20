@@ -7,6 +7,7 @@ import onnx
 import ezkl
 import json
 import asyncio
+import onnx2torch
 
 
 # Define the MLP model
@@ -136,7 +137,25 @@ async def main():
     await ezkl.gen_witness(
         data="input.json", model="mnist_mlp.ezkl", output="witness.json"
     )
+    
+    # Add this code to read and process the witness file
+    with open("witness.json", "r") as f:
+        witness_data = json.load(f)
+    
+    # The output is stored in the 'output' field of the witness data
+    model_output = witness_data["pretty_elements"]["rescaled_outputs"]
+    # Convert the output to a list and get the predicted class
+    predictions = model_output[0]  # Get first batch
+    predicted_class = max(range(len(predictions)), key=lambda i: predictions[i])
+    print("Model predictions:", predictions)
+    print("Predicted class:", predicted_class)
 
+    # Convert ONNX model to PyTorch
+    model = onnx2torch.convert(onnx_model)
+    model.eval()  # Set to evaluation mode
+    print(model(dummy_input))
+    
+    print("Proving...")
     ezkl.prove(
         witness="witness.json",
         model="mnist_mlp.ezkl",
@@ -144,7 +163,16 @@ async def main():
         proof_path="proof.json",
         srs_path="kzg.srs",
     )
+    print("Proof generated")
 
+    print("Verifying...")
+    ezkl.verify(
+        proof_path="proof.json",
+        settings_path="settings.json",
+        vk_path="vk.key",
+        srs_path="kzg.srs",
+    )
+    print("Verification complete")
 
 if __name__ == "__main__":
     asyncio.run(main())
