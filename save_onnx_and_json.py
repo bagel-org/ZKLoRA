@@ -45,6 +45,7 @@ input_ids = tokenizer(input_text, return_tensors='pt').input_ids
 lora_layers = []
 for name, module in model.named_modules():
     if hasattr(module, 'lora_A') and hasattr(module, 'lora_B'):
+        print(name, module)
         lora_layers.append((name, module))
 
 if not lora_layers:
@@ -62,10 +63,16 @@ intermediate_activations = {}
 
 def make_hook(idx):
     def hook(module, inp, out):
-        # out is shape (batch, seq_len, hidden_dim)
-        # We'll store it for that layer index
-        intermediate_activations[idx] = out.detach().cpu().numpy()
+        # If out is a tuple, the hidden states are usually at out[0].
+        # Check the type of out and extract accordingly:
+        if isinstance(out, tuple):
+            hidden_states = out[0]
+        else:
+            hidden_states = out
+        
+        intermediate_activations[idx] = hidden_states.detach().cpu().numpy()
     return hook
+
 
 # Register hooks for each layer
 transformer_layers = model.base_model.model.transformer.h
@@ -94,20 +101,25 @@ def extract_lora_weights(lora_module):
     B = lora_module.lora_B['default'].weight.detach().cpu().float()
     return A, B
 
+
+
 class LoraApplyModel(nn.Module):
     def forward(self, x, A, B):
-        in_dim = x.shape[-1]
-        # Fix B orientation if needed
-        if B.shape[0] != in_dim:
-            B = B.transpose(0, 1)
-        # Fix A orientation
-        if A.shape[0] != B.shape[1]:
-            A = A.transpose(0, 1)
+        # Ensure A is [768,4], B is [4,2304]
+        if A.shape == (4, 768):
+            A = A.transpose(0, 1) # [768,4]
+        if B.shape == (2304, 4):
+            B = B.transpose(0, 1) # [4,2304]
 
-        out = torch.matmul(torch.matmul(x, B), A)
-        # Depend on all inputs to prevent folding
-        out = out + x.mean() + A.sum() + B.sum()
+        # x: [batch, seq_len, 768]
+        # (x @ A): [batch, seq_len, 4]
+        # ((x @ A) @ B): [batch, seq_len, 2304]
+        out = (x @ A) @ B
+
+        # Add a dependency on x, A, B to prevent folding (optional)
+        #out = out + x.mean() + A.sum() + B.sum()
         return out
+
 
 def load_onnx_input_specs(onnx_path):
     m = onnx.load(onnx_path)
