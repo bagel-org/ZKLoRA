@@ -6,3 +6,4 @@ settings.json
 *.ezkl
 *.srs
 input.json
+witness.json
