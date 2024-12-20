@@ -5,3 +5,4 @@ settings.json
 .env
 *.ezkl
 *.srs
+input.json
