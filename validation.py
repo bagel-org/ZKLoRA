@@ -5,6 +5,7 @@ from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 import onnx
 import ezkl
+import json
 import asyncio
 
 # Define the MLP model
@@ -94,9 +95,7 @@ def train():
     )
     print("Model exported to mnist_mlp.onnx")
 
-    
-
-if __name__ == "__main__":
+async def main():
     # Load the ONNX model
     onnx_model = onnx.load("mnist_mlp.onnx")
     
@@ -120,7 +119,18 @@ if __name__ == "__main__":
     #
     # Prove
     #
-    
+    dummy_input = torch.randn(1, 1, 28, 28)  # MNIST image size is 28x28
+    input_data = {
+        "input_data": [
+            dummy_input.numpy().reshape(-1).tolist()  # Flatten the array
+        ]
+    }
+    with open("input.json", "w") as f:
+        json.dump(input_data, f)
+    print("Input data exported to input.json")
 
+    await ezkl.gen_witness(data="input.json", model="mnist_mlp.ezkl", output="witness.json")
 
+if __name__ == "__main__":
+    asyncio.run(main())
 
