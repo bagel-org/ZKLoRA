@@ -1,2 +1,7 @@
 venv
 data
+settings.json
+*.key
+.env
+*.ezkl
+*.srs
