@@ -4,6 +4,8 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 import onnx
+import ezkl
+import asyncio
 
 # Define the MLP model
 class MLP(nn.Module):
@@ -92,8 +94,9 @@ def train():
     )
     print("Model exported to mnist_mlp.onnx")
 
-if __name__ == "__main__":
     
+
+if __name__ == "__main__":
     # Load the ONNX model
     onnx_model = onnx.load("mnist_mlp.onnx")
     
@@ -105,7 +108,19 @@ if __name__ == "__main__":
         print(f"ONNX model validation failed: {e}")
         exit(1)
     
+    #
+    # Setup
+    #
+    ezkl.gen_settings("mnist_mlp.onnx")
+    #ezkl.calibrate_settings("mnist_mlp.onnx", "settings.json", target="resources")
+    ezkl.compile_circuit("mnist_mlp.onnx", "mnist_mlp.ezkl", "settings.json")
+    ezkl.gen_srs("kzg.srs", 17)
+    ezkl.setup("mnist_mlp.ezkl", "vk.key", "pk.key", "kzg.srs")
 
+    #
+    # Prove
+    #
     
+
 
 
