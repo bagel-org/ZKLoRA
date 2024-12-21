@@ -117,7 +117,11 @@ async def main():
     #
     # Setup
     #
-    ezkl.gen_settings("mnist_mlp.onnx")
+    py_run_args = ezkl.PyRunArgs()
+    py_run_args.input_visibility = "public"
+    py_run_args.output_visibility = "public"
+    py_run_args.param_visibility = "fixed"
+    ezkl.gen_settings("mnist_mlp.onnx", py_run_args=py_run_args)
     # ezkl.calibrate_settings("mnist_mlp.onnx", "settings.json", target="resources")
     ezkl.compile_circuit("mnist_mlp.onnx", "mnist_mlp.ezkl", "settings.json")
     ezkl.gen_srs("kzg.srs", 17)
@@ -147,13 +151,17 @@ async def main():
     # Convert the output to a list and get the predicted class
     predictions = model_output[0]  # Get first batch
     predicted_class = max(range(len(predictions)), key=lambda i: predictions[i])
-    print("Model predictions:", predictions)
-    print("Predicted class:", predicted_class)
+    print("Circuit Model predictions:", predictions)
+    print("Circuit Predicted class:", predicted_class)
 
     # Convert ONNX model to PyTorch
     model = onnx2torch.convert(onnx_model)
     model.eval()  # Set to evaluation mode
-    print(model(dummy_input))
+    real_model_output = model(dummy_input)
+    predictions = real_model_output[0].detach().numpy().tolist()  # Convert tensor to list
+    predicted_class = max(range(len(predictions)), key=lambda i: predictions[i])
+    print("Real Model predictions:", predictions)
+    print("Real Predicted class:", predicted_class)
     
     print("Proving...")
     ezkl.prove(
