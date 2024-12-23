@@ -217,14 +217,17 @@ def compare_predictions(witness_data, single_data, single_target):
     predicted_class_with_loss = max(
         range(len(predictions[0])), key=lambda i: predictions[0][i]
     )
-    print("Loss:", loss.item())
+    print("Loss:", f"{loss.item():.2f}")
 
     # Get predictions from circuit model
     model_output = witness_data["pretty_elements"]["rescaled_outputs"]
     predictions = model_output[0]  # Get first batch
-    predicted_class = max(range(len(model_output[1])), key=lambda i: model_output[1][i])
-    print("Circuit Model loss:", predictions[0])
+    # Convert string to float before formatting
+    circuit_loss = float(predictions[0])
+    print("Circuit Model loss:", f"{circuit_loss:.2f}")
 
+    predicted_class = max(range(len(model_output[1])), key=lambda i: float(model_output[1][i]))
+    
     return predicted_class_with_loss, predicted_class
 
 
@@ -320,8 +323,8 @@ async def main():
     predicted_class_with_loss, predicted_class = compare_predictions(
         witness_data, single_data, single_target
     )
-    print(f"Real model predicted class: {predicted_class_with_loss:.2f}")
-    print(f"Circuit model predicted class: {predicted_class:.2f}")
+    print(f"Real model predicted class: {predicted_class_with_loss}")
+    print(f"Circuit model predicted class: {predicted_class}")
 
 
 if __name__ == "__main__":
