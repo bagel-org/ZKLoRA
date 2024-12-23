@@ -3,11 +3,16 @@ import torch.nn as nn
 import torch.optim as optim
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
+import torch.onnx
 import onnx
 import ezkl
 import json
 import asyncio
 import onnx2torch
+
+import warnings
+
+warnings.filterwarnings("ignore")
 
 
 # Define the MLP model
@@ -22,6 +27,18 @@ class MLP(nn.Module):
     def forward(self, x):
         x = self.flatten(x)
         return self.layers(x)
+
+
+# Add this new wrapper class after the MLP class
+class MLPWithLoss(nn.Module):
+    def __init__(self, model):
+        super(MLPWithLoss, self).__init__()
+        self.model = model
+
+    def forward(self, x, target):
+        output = self.model(x)
+        loss = (target - output).pow(2).mean()
+        return loss, output  # Return both loss and predictions
 
 
 def train():
@@ -114,6 +131,42 @@ async def main():
         print(f"ONNX model validation failed: {e}")
         exit(1)
 
+    # Convert ONNX model to PyTorch
+    model = onnx2torch.convert(onnx_model)
+    model.eval()  # Set to evaluation mode
+
+    transform = transforms.Compose(
+        [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
+    )
+    test_dataset = datasets.MNIST(
+        "./data", train=False, transform=transform, download=True
+    )
+    test_loader = DataLoader(test_dataset, batch_size=1000)
+
+    # Get one random sample from test dataset
+    data_iter = iter(test_loader)
+    data, target = next(data_iter)
+    # Select just one random example
+    random_idx = torch.randint(0, len(data), (1,)).item()
+    single_data = data[random_idx : random_idx + 1]
+    single_target = target[random_idx : random_idx + 1]
+    print(f"Selected random test example with label: {single_target.item()}")
+
+    # Create the wrapper model
+    wrapped_model = MLPWithLoss(model)
+    wrapped_model.eval()  # Set to evaluation mode
+
+    # Export to ONNX with the wrapper
+    torch.onnx.export(
+        wrapped_model,
+        (single_data, single_target),
+        "model_with_loss.onnx",
+        input_names=["input_x", "input_y"],
+        output_names=["loss"],
+        training=torch.onnx.TrainingMode.TRAINING,
+        opset_version=14,
+    )
+
     #
     # Setup
     #
@@ -121,18 +174,20 @@ async def main():
     py_run_args.input_visibility = "public"
     py_run_args.output_visibility = "public"
     py_run_args.param_visibility = "fixed"
-    ezkl.gen_settings("mnist_mlp.onnx", py_run_args=py_run_args)
+    ezkl.gen_settings("model_with_loss.onnx", py_run_args=py_run_args)
     # ezkl.calibrate_settings("mnist_mlp.onnx", "settings.json", target="resources")
-    ezkl.compile_circuit("mnist_mlp.onnx", "mnist_mlp.ezkl", "settings.json")
+    ezkl.compile_circuit("model_with_loss.onnx", "mnist_mlp.ezkl", "settings.json")
     ezkl.gen_srs("kzg.srs", 17)
     ezkl.setup("mnist_mlp.ezkl", "vk.key", "pk.key", "kzg.srs")
 
     #
     # Prove
     #
-    dummy_input = torch.randn(1, 1, 28, 28)  # MNIST image size is 28x28
     input_data = {
-        "input_data": [dummy_input.numpy().reshape(-1).tolist()]  # Flatten the array
+        "input_data": [
+            single_data.numpy().reshape(-1).tolist(),
+            single_target.numpy().reshape(-1).tolist(),
+        ]  # Flatten the array
     }
     with open("input.json", "w") as f:
         json.dump(input_data, f)
@@ -141,11 +196,27 @@ async def main():
     await ezkl.gen_witness(
         data="input.json", model="mnist_mlp.ezkl", output="witness.json"
     )
-    
+
     # Add this code to read and process the witness file
     with open("witness.json", "r") as f:
         witness_data = json.load(f)
-    
+
+    # Convert ONNX model to PyTorch
+    # Load the ONNX model
+    onnx_model_with_loss = onnx.load("model_with_loss.onnx")
+    model_with_loss = onnx2torch.convert(onnx_model_with_loss)
+    model_with_loss.eval()  # Set to evaluation mode
+    real_model_output_with_loss = model_with_loss(single_data, single_target)
+    # Get both loss and predictions
+    loss, predictions = real_model_output_with_loss
+    predictions_with_loss = predictions.detach().numpy().tolist()
+    predicted_class_with_loss = max(
+        range(len(predictions_with_loss)), key=lambda i: predictions_with_loss[i]
+    )
+    print("Loss:", loss.item())
+    print("Real Model predictions with loss:", predictions_with_loss)
+    print("Real Predicted class with loss:", predicted_class_with_loss)
+
     # The output is stored in the 'output' field of the witness data
     model_output = witness_data["pretty_elements"]["rescaled_outputs"]
     # Convert the output to a list and get the predicted class
@@ -154,15 +225,6 @@ async def main():
     print("Circuit Model predictions:", predictions)
     print("Circuit Predicted class:", predicted_class)
 
-    # Convert ONNX model to PyTorch
-    model = onnx2torch.convert(onnx_model)
-    model.eval()  # Set to evaluation mode
-    real_model_output = model(dummy_input)
-    predictions = real_model_output[0].detach().numpy().tolist()  # Convert tensor to list
-    predicted_class = max(range(len(predictions)), key=lambda i: predictions[i])
-    print("Real Model predictions:", predictions)
-    print("Real Predicted class:", predicted_class)
-    
     print("Proving...")
     ezkl.prove(
         witness="witness.json",
@@ -181,6 +243,7 @@ async def main():
         srs_path="kzg.srs",
     )
     print("Verification complete")
+
 
 if __name__ == "__main__":
     asyncio.run(main())
