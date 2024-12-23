@@ -9,6 +9,7 @@ import ezkl
 import json
 import asyncio
 import onnx2torch
+import time
 
 import warnings
 
@@ -213,7 +214,9 @@ def compare_predictions(witness_data, single_data, single_target):
     # Get both loss and predictions from real model
     loss, predictions = real_model_output_with_loss
     predictions = predictions.detach().cpu().numpy().tolist()  # Added .cpu()
-    predicted_class_with_loss = max(range(len(predictions[0])), key=lambda i: predictions[0][i])
+    predicted_class_with_loss = max(
+        range(len(predictions[0])), key=lambda i: predictions[0][i]
+    )
     print("Loss:", loss.item())
 
     # Get predictions from circuit model
@@ -250,11 +253,15 @@ async def main():
     py_run_args.output_visibility = "public"
     py_run_args.param_visibility = "fixed"
 
+    print("Generating settings...")
+    start_time = time.time()
     ezkl.gen_settings("model_with_loss.onnx", py_run_args=py_run_args)
     # ezkl.calibrate_settings("mnist_mlp.onnx", "settings.json", target="resources")
     ezkl.compile_circuit("model_with_loss.onnx", "mnist_mlp.ezkl", "settings.json")
     ezkl.gen_srs("kzg.srs", 17)
     ezkl.setup("mnist_mlp.ezkl", "vk.key", "pk.key", "kzg.srs")
+    end_time = time.time()
+    print(f"Setup took {end_time - start_time:.2f} seconds")
 
     #
     # Prove
@@ -272,15 +279,20 @@ async def main():
     print("Input data exported to input.json")
 
     # Generate witness
+    print("Generating witness...")
+    start_time = time.time()
     await ezkl.gen_witness(
         data="input.json", model="mnist_mlp.ezkl", output="witness.json"
     )
+    end_time = time.time()
+    print(f"Witness generation took {end_time - start_time:.2f} seconds")
 
     # Read and process the witness file
     with open("witness.json", "r") as f:
         witness_data = json.load(f)
 
     print("Proving...")
+    start_time = time.time()
     ezkl.prove(
         witness="witness.json",
         model="mnist_mlp.ezkl",
@@ -288,25 +300,28 @@ async def main():
         proof_path="proof.json",
         srs_path="kzg.srs",
     )
-    print("Proof generated")
+    end_time = time.time()
+    print(f"Proving took {end_time - start_time:.2f} seconds")
 
     #
     # Verify
     #
     print("Verifying...")
+    start_time = time.time()
     ezkl.verify(
         proof_path="proof.json",
         settings_path="settings.json",
         vk_path="vk.key",
         srs_path="kzg.srs",
     )
-    print("Verification complete")
+    end_time = time.time()
+    print(f"Verification took {end_time - start_time:.2f} seconds")
 
     predicted_class_with_loss, predicted_class = compare_predictions(
         witness_data, single_data, single_target
     )
-    print(f"Real model predicted class: {predicted_class_with_loss}")
-    print(f"Circuit model predicted class: {predicted_class}")
+    print(f"Real model predicted class: {predicted_class_with_loss:.2f}")
+    print(f"Circuit model predicted class: {predicted_class:.2f}")
 
 
 if __name__ == "__main__":
