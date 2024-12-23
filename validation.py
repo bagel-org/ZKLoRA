@@ -212,16 +212,14 @@ def compare_predictions(witness_data, single_data, single_target):
 
     # Get both loss and predictions from real model
     loss, predictions = real_model_output_with_loss
-    predictions_with_loss = predictions.detach().numpy().tolist()
-    predicted_class_with_loss = max(
-        range(len(predictions_with_loss)), key=lambda i: predictions_with_loss[i]
-    )
+    predictions = predictions.detach().cpu().numpy().tolist()  # Added .cpu()
+    predicted_class_with_loss = max(range(len(predictions[0])), key=lambda i: predictions[0][i])
     print("Loss:", loss.item())
 
     # Get predictions from circuit model
     model_output = witness_data["pretty_elements"]["rescaled_outputs"]
     predictions = model_output[0]  # Get first batch
-    predicted_class = max(range(len(predictions)), key=lambda i: predictions[i])
+    predicted_class = max(range(len(model_output[1])), key=lambda i: model_output[1][i])
     print("Circuit Model loss:", predictions[0])
 
     return predicted_class_with_loss, predicted_class
