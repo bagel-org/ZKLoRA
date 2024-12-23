@@ -60,7 +60,7 @@ def train():
 
     # Initialize the model
     model = MLP().to(device)
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     epochs = 1
@@ -69,9 +69,13 @@ def train():
         model.train()
         for batch_idx, (data, target) in enumerate(train_loader):
             data, target = data.to(device), target.to(device)
+            # Convert targets to one-hot encoding for MSE
+            target_one_hot = torch.zeros(target.size(0), 10, device=device)
+            target_one_hot.scatter_(1, target.unsqueeze(1), 1)
+            
             optimizer.zero_grad()
             output = model(data)
-            loss = criterion(output, target)
+            loss = criterion(output, target_one_hot)
             loss.backward()
             optimizer.step()
 
