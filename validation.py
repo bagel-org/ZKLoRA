@@ -72,7 +72,7 @@ def train():
             # Convert targets to one-hot encoding for MSE
             target_one_hot = torch.zeros(target.size(0), 10, device=device)
             target_one_hot.scatter_(1, target.unsqueeze(1), 1)
-            
+
             optimizer.zero_grad()
             output = model(data)
             loss = criterion(output, target_one_hot)
@@ -92,8 +92,14 @@ def train():
     with torch.no_grad():
         for data, target in test_loader:
             data, target = data.to(device), target.to(device)
+            # Convert targets to one-hot encoding here too
+            target_one_hot = torch.zeros(target.size(0), 10, device=device)
+            target_one_hot.scatter_(1, target.unsqueeze(1), 1)
+
             output = model(data)
-            test_loss += criterion(output, target).item()
+            test_loss += criterion(
+                output, target_one_hot
+            ).item()  # Use target_one_hot instead of target
             pred = output.argmax(dim=1, keepdim=True)
             correct += pred.eq(target.view_as(pred)).sum().item()
 
@@ -298,8 +304,13 @@ async def main():
     )
     print("Verification complete")
 
-    compare_predictions(witness_data, single_data, single_target)
+    predicted_class_with_loss, predicted_class = compare_predictions(
+        witness_data, single_data, single_target
+    )
+    print(f"Real model predicted class: {predicted_class_with_loss}")
+    print(f"Circuit model predicted class: {predicted_class}")
 
 
 if __name__ == "__main__":
+    # train()
     asyncio.run(main())
