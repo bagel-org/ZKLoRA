@@ -119,22 +119,69 @@ def train():
     print("Model exported to mnist_mlp.onnx")
 
 
-async def main():
-    # Load the ONNX model
-    onnx_model = onnx.load("mnist_mlp.onnx")
+def get_random_test_sample(test_loader):
+    """
+    Get a random sample from the test dataset.
 
-    # Check the model for consistency
-    try:
-        onnx.checker.check_model(onnx_model)
-        print("ONNX model is well-formed and valid")
-    except Exception as e:
-        print(f"ONNX model validation failed: {e}")
-        exit(1)
+    Args:
+        test_loader: DataLoader containing the test dataset
+
+    Returns:
+        tuple: (single_data, single_target) containing one random example and its label
+    """
+    data_iter = iter(test_loader)
+    data, target = next(data_iter)
+    random_idx = torch.randint(0, len(data), (1,)).item()
+    single_data = data[random_idx : random_idx + 1]
+    single_target = target[random_idx : random_idx + 1]
+    print(f"Selected random test example with label: {single_target.item()}")
+    return single_data, single_target
+
+
+def prepare_wrapped_model(
+    mnist_model_path: str, wrapped_model_path: str, single_data: torch.Tensor, single_target: torch.Tensor
+):
+    """
+    Prepares a wrapped model with loss function from a trained MNIST model.
+
+    Args:
+        mnist_model_path (str): Path to the trained MNIST ONNX model
+        wrapped_model_path (str): Path to the wrapped model ONNX file
+        single_data: The single data sample
+        single_target: The single target sample
+
+    Returns:
+        wrapped_model: The wrapped model
+
+    """
+    # Load the ONNX model
+    onnx_model = onnx.load(mnist_model_path)
 
     # Convert ONNX model to PyTorch
     model = onnx2torch.convert(onnx_model)
     model.eval()  # Set to evaluation mode
 
+    # Create and prepare the wrapper model
+    wrapped_model = MLPWithLoss(model)
+    wrapped_model.eval()  # Set to evaluation mode
+
+    # Export to ONNX with the wrapper
+    torch.onnx.export(
+        wrapped_model,
+        (single_data, single_target),
+        wrapped_model_path,
+        input_names=["input_x", "input_y"],
+        output_names=["loss"],
+        training=torch.onnx.TrainingMode.TRAINING,
+        opset_version=14,
+    )
+
+    return wrapped_model
+
+
+async def main():
+
+    # Prepare test dataset
     transform = transforms.Compose(
         [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
     )
@@ -143,28 +190,11 @@ async def main():
     )
     test_loader = DataLoader(test_dataset, batch_size=1000)
 
-    # Get one random sample from test dataset
-    data_iter = iter(test_loader)
-    data, target = next(data_iter)
-    # Select just one random example
-    random_idx = torch.randint(0, len(data), (1,)).item()
-    single_data = data[random_idx : random_idx + 1]
-    single_target = target[random_idx : random_idx + 1]
-    print(f"Selected random test example with label: {single_target.item()}")
+    # Get random test sample
+    single_data, single_target = get_random_test_sample(test_loader)
 
-    # Create the wrapper model
-    wrapped_model = MLPWithLoss(model)
-    wrapped_model.eval()  # Set to evaluation mode
-
-    # Export to ONNX with the wrapper
-    torch.onnx.export(
-        wrapped_model,
-        (single_data, single_target),
-        "model_with_loss.onnx",
-        input_names=["input_x", "input_y"],
-        output_names=["loss"],
-        training=torch.onnx.TrainingMode.TRAINING,
-        opset_version=14,
+    wrapped_model = prepare_wrapped_model(
+        "mnist_mlp.onnx", "model_with_loss.onnx", single_data, single_target
     )
 
     #
