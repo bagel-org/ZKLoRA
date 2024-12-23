@@ -119,16 +119,16 @@ def train():
     print("Model exported to mnist_mlp.onnx")
 
 
-def get_random_test_sample(test_loader):
+def get_random_test_sample(test_dataset):
     """
     Get a random sample from the test dataset.
 
     Args:
-        test_loader: DataLoader containing the test dataset
-
+        test_dataset: The test dataset
     Returns:
         tuple: (single_data, single_target) containing one random example and its label
     """
+    test_loader = DataLoader(test_dataset, batch_size=1000)
     data_iter = iter(test_loader)
     data, target = next(data_iter)
     random_idx = torch.randint(0, len(data), (1,)).item()
@@ -139,7 +139,10 @@ def get_random_test_sample(test_loader):
 
 
 def prepare_wrapped_model(
-    mnist_model_path: str, wrapped_model_path: str, single_data: torch.Tensor, single_target: torch.Tensor
+    mnist_model_path: str,
+    wrapped_model_path: str,
+    single_data: torch.Tensor,
+    single_target: torch.Tensor,
 ):
     """
     Prepares a wrapped model with loss function from a trained MNIST model.
@@ -179,6 +182,41 @@ def prepare_wrapped_model(
     return wrapped_model
 
 
+def compare_predictions(witness_data, single_data, single_target):
+    """
+    Compare predictions between the real model and circuit model outputs.
+
+    Args:
+        witness_data: Dictionary containing the circuit model output data
+        single_data: The single data sample
+        single_target: The single target sample
+
+    Returns:
+        tuple: (predicted_class_with_loss, predicted_class) containing predictions from both models
+    """
+    # Convert ONNX model to PyTorch
+    onnx_model_with_loss = onnx.load("model_with_loss.onnx")
+    model_with_loss = onnx2torch.convert(onnx_model_with_loss)
+    model_with_loss.eval()  # Set to evaluation mode
+    real_model_output_with_loss = model_with_loss(single_data, single_target)
+
+    # Get both loss and predictions from real model
+    loss, predictions = real_model_output_with_loss
+    predictions_with_loss = predictions.detach().numpy().tolist()
+    predicted_class_with_loss = max(
+        range(len(predictions_with_loss)), key=lambda i: predictions_with_loss[i]
+    )
+    print("Loss:", loss.item())
+
+    # Get predictions from circuit model
+    model_output = witness_data["pretty_elements"]["rescaled_outputs"]
+    predictions = model_output[0]  # Get first batch
+    predicted_class = max(range(len(predictions)), key=lambda i: predictions[i])
+    print("Circuit Model loss:", predictions[0])
+
+    return predicted_class_with_loss, predicted_class
+
+
 async def main():
 
     # Prepare test dataset
@@ -188,12 +226,11 @@ async def main():
     test_dataset = datasets.MNIST(
         "./data", train=False, transform=transform, download=True
     )
-    test_loader = DataLoader(test_dataset, batch_size=1000)
 
     # Get random test sample
-    single_data, single_target = get_random_test_sample(test_loader)
+    single_data, single_target = get_random_test_sample(test_dataset)
 
-    wrapped_model = prepare_wrapped_model(
+    prepare_wrapped_model(
         "mnist_mlp.onnx", "model_with_loss.onnx", single_data, single_target
     )
 
@@ -204,6 +241,7 @@ async def main():
     py_run_args.input_visibility = "public"
     py_run_args.output_visibility = "public"
     py_run_args.param_visibility = "fixed"
+
     ezkl.gen_settings("model_with_loss.onnx", py_run_args=py_run_args)
     # ezkl.calibrate_settings("mnist_mlp.onnx", "settings.json", target="resources")
     ezkl.compile_circuit("model_with_loss.onnx", "mnist_mlp.ezkl", "settings.json")
@@ -213,6 +251,8 @@ async def main():
     #
     # Prove
     #
+
+    # Prepare input data
     input_data = {
         "input_data": [
             single_data.numpy().reshape(-1).tolist(),
@@ -223,37 +263,14 @@ async def main():
         json.dump(input_data, f)
     print("Input data exported to input.json")
 
+    # Generate witness
     await ezkl.gen_witness(
         data="input.json", model="mnist_mlp.ezkl", output="witness.json"
     )
 
-    # Add this code to read and process the witness file
+    # Read and process the witness file
     with open("witness.json", "r") as f:
         witness_data = json.load(f)
-
-    # Convert ONNX model to PyTorch
-    # Load the ONNX model
-    onnx_model_with_loss = onnx.load("model_with_loss.onnx")
-    model_with_loss = onnx2torch.convert(onnx_model_with_loss)
-    model_with_loss.eval()  # Set to evaluation mode
-    real_model_output_with_loss = model_with_loss(single_data, single_target)
-    # Get both loss and predictions
-    loss, predictions = real_model_output_with_loss
-    predictions_with_loss = predictions.detach().numpy().tolist()
-    predicted_class_with_loss = max(
-        range(len(predictions_with_loss)), key=lambda i: predictions_with_loss[i]
-    )
-    print("Loss:", loss.item())
-    print("Real Model predictions with loss:", predictions_with_loss)
-    print("Real Predicted class with loss:", predicted_class_with_loss)
-
-    # The output is stored in the 'output' field of the witness data
-    model_output = witness_data["pretty_elements"]["rescaled_outputs"]
-    # Convert the output to a list and get the predicted class
-    predictions = model_output[0]  # Get first batch
-    predicted_class = max(range(len(predictions)), key=lambda i: predictions[i])
-    print("Circuit Model predictions:", predictions)
-    print("Circuit Predicted class:", predicted_class)
 
     print("Proving...")
     ezkl.prove(
@@ -265,6 +282,9 @@ async def main():
     )
     print("Proof generated")
 
+    #
+    # Verify
+    #
     print("Verifying...")
     ezkl.verify(
         proof_path="proof.json",
@@ -273,6 +293,8 @@ async def main():
         srs_path="kzg.srs",
     )
     print("Verification complete")
+
+    compare_predictions(witness_data, single_data, single_target)
 
 
 if __name__ == "__main__":
