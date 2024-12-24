@@ -12,4 +12,4 @@ Key assumptions and innovations include:
 - The base model is open source.
 - The use of **polynomial commitments** and **succinct zero-knowledge proofs** enables **millisecond-scale verification** for LoRA updates, even for typical large model sizes.
 
-ZKLoRA opens up possibilities for **trustworthy, private, and verifiable fine-tuning** in decentralized or contract-based environments. This approach offers a robust path forward for leveraging PEFT methods while maintaining trust and privacy in collaborative AI development.
+ZKLoRA opens up possibilities for **trustworthy, and verifiable model contributed** in a distributed or contract-based environments. This approach offers a robust path forward for leveraging PEFT methods while maintaining trust and privacy in collaborative AI development.
