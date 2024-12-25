@@ -8,6 +8,7 @@ import onnx
 from torch.onnx import TrainingMode
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import PeftModel
+from typing import Callable
 
 #############################################
 # Configuration
@@ -61,8 +62,8 @@ layer_idx_pattern = re.compile(r"transformer\.h\.(\d+)\.attn\.c_attn")
 #############################################
 intermediate_activations = {}
 
-def make_hook(idx):
-    def hook(module, inp, out):
+def make_hook(idx) -> callable:
+    def hook(module, inp, out) -> None:
         # If out is a tuple, the hidden states are usually at out[0].
         # Check the type of out and extract accordingly:
         if isinstance(out, tuple):
@@ -96,7 +97,7 @@ if len(intermediate_activations) == 0:
 # - Create JSON input file
 # - Print ONNX inputs and do a basic validation
 #############################################
-def extract_lora_weights(lora_module):
+def extract_lora_weights(lora_module) -> tuple[torch.Tensor, torch.Tensor]:
     A = lora_module.lora_A['default'].weight.detach().cpu().float()
     B = lora_module.lora_B['default'].weight.detach().cpu().float()
     return A, B
@@ -104,7 +105,7 @@ def extract_lora_weights(lora_module):
 
 
 class LoraApplyModel(nn.Module):
-    def forward(self, x, A, B):
+    def forward(self, x: torch.Tensor, A: torch.Tensor, B: torch.Tensor) -> torch.Tensor:
         # Ensure A is [768,4], B is [4,2304]
         if A.shape == (4, 768):
             A = A.transpose(0, 1) # [768,4]
@@ -121,7 +122,7 @@ class LoraApplyModel(nn.Module):
         return out
 
 
-def load_onnx_input_specs(onnx_path):
+def load_onnx_input_specs(onnx_path: str) -> list[tuple[str, list[int], np.dtype]]:
     m = onnx.load(onnx_path)
     graph = m.graph
     onnx_type_to_numpy = {

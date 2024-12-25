@@ -40,7 +40,7 @@ activation_map = {}
 
 issued_wte_warning = False  # track if we've warned about wte/wpe
 
-def register_lora_hooks_recursive(model, activation_map):
+def register_lora_hooks_recursive(model, activation_map) -> None:
     """
     Recursively finds LoRA submodules, checks if submodule name has "wte"/"wpe".
     If so, skip hooking and optionally print a warning once.
@@ -88,7 +88,7 @@ if len(activation_map) == 0:
 # main loop extracting A,B, building sub-model, etc.
 #############################################
 
-def fix_lora_by_input_shape(A: torch.Tensor, B: torch.Tensor, x_data: np.ndarray):
+def fix_lora_by_input_shape(A: torch.Tensor, B: torch.Tensor, x_data: np.ndarray) -> tuple[torch.Tensor, torch.Tensor, int, int, int]:
     in_dim = x_data.shape[-1]
     a0, a1 = A.shape
     if a0 == in_dim:
@@ -111,17 +111,17 @@ def fix_lora_by_input_shape(A: torch.Tensor, B: torch.Tensor, x_data: np.ndarray
     return A, B, in_dim, r, out_dim
 
 class LoraApplyModel(nn.Module):
-    def __init__(self, A, B):
+    def __init__(self, A, B) -> None:
         super().__init__()
         self.register_buffer("A", A)
         self.register_buffer("B", B)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         out = (x @ self.A) @ self.B
         out = out + x.mean() + self.A.sum() + self.B.sum()
         return out
 
-def load_onnx_input_specs(onnx_path):
+def load_onnx_input_specs(onnx_path: str) -> list[tuple[str, list[int], np.dtype]]:
     m = onnx.load(onnx_path)
     graph = m.graph
     onnx_type_to_numpy = {
