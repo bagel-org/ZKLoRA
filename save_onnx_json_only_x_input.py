@@ -11,21 +11,49 @@ from torch.onnx import TrainingMode
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import PeftModel
 
+
 def parse_args():
-    parser = argparse.ArgumentParser(description="Export LoRA submodules to ONNX with dynamic shape, properly shaped JSON.")
-    parser.add_argument("--base_model", type=str, required=True,
-                        help="Base model name/path (e.g. 'distilgpt2').")
-    parser.add_argument("--lora_model", type=str, required=True,
-                        help="LoRA model name/path (e.g. 'shirzady1934/distilgpt-monolinugal').")
-    parser.add_argument("--input_text", type=str, default="Hello, world!",
-                        help="Sample text used to capture sub-layer activations.")
-    parser.add_argument("--output_dir", type=str, default="lora_onnx_params",
-                        help="Directory to save ONNX files.")
-    parser.add_argument("--json_dir", type=str, default="intermediate_activations",
-                        help="Directory to save JSON input files.")
-    parser.add_argument("--submodule_key", type=str, default=None,
-                        help="If given, only export the submodule whose name contains this string. Otherwise export all.")
+    parser = argparse.ArgumentParser(
+        description="Export LoRA submodules to ONNX with dynamic shape, properly shaped JSON."
+    )
+    parser.add_argument(
+        "--base_model",
+        type=str,
+        required=True,
+        help="Base model name/path (e.g. 'distilgpt2').",
+    )
+    parser.add_argument(
+        "--lora_model",
+        type=str,
+        required=True,
+        help="LoRA model name/path (e.g. 'shirzady1934/distilgpt-monolinugal').",
+    )
+    parser.add_argument(
+        "--input_text",
+        type=str,
+        default="Hello, world!",
+        help="Sample text used to capture sub-layer activations.",
+    )
+    parser.add_argument(
+        "--output_dir",
+        type=str,
+        default="lora_onnx_params",
+        help="Directory to save ONNX files.",
+    )
+    parser.add_argument(
+        "--json_dir",
+        type=str,
+        default="intermediate_activations",
+        help="Directory to save JSON input files.",
+    )
+    parser.add_argument(
+        "--submodule_key",
+        type=str,
+        default=None,
+        help="If given, only export the submodule whose name contains this string. Otherwise export all.",
+    )
     return parser.parse_args()
+
 
 def main():
     args = parse_args()
@@ -50,7 +78,7 @@ def main():
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
-    inputs = tokenizer(input_text, return_tensors='pt')
+    inputs = tokenizer(input_text, return_tensors="pt")
     input_ids = inputs["input_ids"]
 
     # We will store the captured input for each LoRA submodule
@@ -62,16 +90,19 @@ def main():
         Recursively finds LoRA submodules, skipping 'wte'/'wpe'. Registers forward hooks on others.
         """
         for full_name, module in model.named_modules():
-            if hasattr(module, 'lora_A') and hasattr(module, 'lora_B'):
+            if hasattr(module, "lora_A") and hasattr(module, "lora_B"):
                 # Skip if submodule name has wte/wpe
-                if ("wte" in full_name or "wpe" in full_name):
+                if "wte" in full_name or "wpe" in full_name:
                     nonlocal issued_wte_warning
                     if not issued_wte_warning:
-                        print(f"WARNING: Found LoRA submodule '{full_name}' (wte/wpe). Skipping hooking embedding.")
+                        print(
+                            f"WARNING: Found LoRA submodule '{full_name}' (wte/wpe). Skipping hooking embedding."
+                        )
                         issued_wte_warning = True
                     continue
 
                 print(f"Registering hook on LoRA submodule: {full_name}")
+
                 def make_hook(mod_name):
                     def hook(mod, layer_inputs, layer_output):
                         # If no layer_inputs, skip
@@ -80,6 +111,7 @@ def main():
                         x = layer_inputs[0]
                         print(f"shape in hook ({mod_name}):", x.size())
                         activation_map[mod_name] = x.detach().cpu().numpy()
+
                     return hook
 
                 module.register_forward_hook(make_hook(full_name))
@@ -99,26 +131,30 @@ def main():
     # fix_lora_by_input_shape => ensures A => [in_dim, r], B => [r, out_dim]
     ########################################################################
     def fix_lora_by_input_shape(A: torch.Tensor, B: torch.Tensor, x_data: np.ndarray):
-        in_dim = x_data.shape[-1]    # e.g. 768 or 3072
+        in_dim = x_data.shape[-1]  # e.g. 768 or 3072
         a0, a1 = A.shape
         # A => [in_dim, r]
         if a0 == in_dim:
             r = a1
         elif a1 == in_dim:
-            A = A.transpose(0,1)
+            A = A.transpose(0, 1)
             r = A.shape[1]
         else:
-            raise ValueError(f"A shape {A.shape} doesn't match x_data last dim {in_dim}.")
+            raise ValueError(
+                f"A shape {A.shape} doesn't match x_data last dim {in_dim}."
+            )
 
         # B => [r, out_dim]
         b0, b1 = B.shape
         if b0 == r:
             out_dim = b1
         elif b1 == r:
-            B = B.transpose(0,1)
+            B = B.transpose(0, 1)
             out_dim = B.shape[1]
         else:
-            raise ValueError(f"B shape {B.shape} doesn't match rank={r} in any dimension.")
+            raise ValueError(
+                f"B shape {B.shape} doesn't match rank={r} in any dimension."
+            )
         return A, B, in_dim, r, out_dim
 
     class LoraApplyModel(nn.Module):
@@ -126,6 +162,7 @@ def main():
             super().__init__()
             self.register_buffer("A", A)
             self.register_buffer("B", B)
+
         def forward(self, x):
             out = (x @ self.A) @ self.B
             # avoid constant folding
@@ -137,10 +174,21 @@ def main():
         graph = onnx_model.graph
         # parse the shapes
         onnx_type_to_numpy = {
-            1: np.float32, 2: np.uint8, 3: np.int8, 4: np.uint16, 5: np.int16,
-            6: np.int32, 7: np.int64, 9: np.bool_, 10: np.float16, 11: np.double,
-            12: np.uint32, 13: np.uint64, 14: np.complex64, 15: np.complex128,
-            16: np.float64
+            1: np.float32,
+            2: np.uint8,
+            3: np.int8,
+            4: np.uint16,
+            5: np.int16,
+            6: np.int32,
+            7: np.int64,
+            9: np.bool_,
+            10: np.float16,
+            11: np.double,
+            12: np.uint32,
+            13: np.uint64,
+            14: np.complex64,
+            15: np.complex128,
+            16: np.float64,
         }
         inputs = []
         for inp in graph.input:
@@ -199,7 +247,9 @@ def main():
 
         # fix shapes
         try:
-            A_fixed, B_fixed, in_dim, rank, out_dim = fix_lora_by_input_shape(A_raw, B_raw, x_data)
+            A_fixed, B_fixed, in_dim, rank, out_dim = fix_lora_by_input_shape(
+                A_raw, B_raw, x_data
+            )
         except ValueError as e:
             print(f"Shape fix error for {full_name}: {e}")
             all_valid = False
@@ -228,10 +278,10 @@ def main():
                 output_names=["output"],
                 dynamic_axes={
                     "input_x": {0: "batch_size", 1: "seq_len"},
-                    "output": {0: "batch_size", 1: "seq_len"}
+                    "output": {0: "batch_size", 1: "seq_len"},
                 },
                 training=TrainingMode.TRAINING,
-                keep_initializers_as_inputs=False
+                keep_initializers_as_inputs=False,
             )
         except Exception as e:
             print(f"Export error for {full_name}: {e}")
@@ -254,7 +304,9 @@ def main():
             all_valid = False
         else:
             if len(input_specs) == 1 and input_specs[0][0] == "input_x":
-                print(f"ONNX model {onnx_path} has only 'input_x' as external input. Good!")
+                print(
+                    f"ONNX model {onnx_path} has only 'input_x' as external input. Good!"
+                )
             else:
                 print(f"Unexpected inputs in {onnx_path}: {input_specs}")
                 all_valid = False
