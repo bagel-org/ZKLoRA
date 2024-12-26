@@ -42,7 +42,7 @@ class MLPWithLoss(nn.Module):
         return loss, output  # Return both loss and predictions
 
 
-def train():
+def train() -> None:
     # Set device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -130,7 +130,7 @@ def train():
     print("Model exported to mnist_mlp.onnx")
 
 
-def get_random_test_sample(test_dataset):
+def get_random_test_sample(test_dataset) -> tuple[torch.Tensor, torch.Tensor]:
     """
     Get a random sample from the test dataset.
 
@@ -154,7 +154,7 @@ def prepare_wrapped_model(
     wrapped_model_path: str,
     single_data: torch.Tensor,
     single_target: torch.Tensor,
-):
+) -> MLPWithLoss:
     """
     Prepares a wrapped model with loss function from a trained MNIST model.
 
@@ -193,7 +193,11 @@ def prepare_wrapped_model(
     return wrapped_model
 
 
-def compare_predictions(witness_data, single_data, single_target):
+def compare_predictions(
+    witness_data: dict,
+    single_data: torch.Tensor,
+    single_target: torch.Tensor
+) -> tuple[int, int]:
     """
     Compare predictions between the real model and circuit model outputs.
 
@@ -231,7 +235,7 @@ def compare_predictions(witness_data, single_data, single_target):
     return predicted_class_with_loss, predicted_class
 
 
-async def main():
+async def main() -> None:
 
     # Prepare test dataset
     transform = transforms.Compose(
