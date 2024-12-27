@@ -1,25 +1,20 @@
-from transformers import AutoModelForCausalLM
+import json
 
-model = AutoModelForCausalLM.from_pretrained("distilgpt2")
+def flatten_list(nested_list):
+    if not isinstance(nested_list, list):
+        return [nested_list]
+    if len(nested_list) == 0:
+        return []
+    if isinstance(nested_list[0], list):
+        return flatten_list(nested_list[0])
+    return nested_list
 
-# Get all named parameters from the model
-for name, param in model.named_parameters():
-    # Print parameter name and its shape and its value
-    print(f"Parameter: {name}")
-    print(f"Shape: {param.shape}")
-    print(f"Value: {param.data}")
-    print("-" * 50)
+if __name__ == "__main__":
+    
+    activations_path = "intermediate_activations/base_model_model_lm_head.json"
+    with open(activations_path, "r") as f:
+        activations = json.load(f)
 
-    # Convert parameter tensor to a flat vector and store in list
-    param_vector = param.data.flatten().tolist()
-    #print(f"Param vector: {param_vector}")
-    
-    # Create a simple commitment by hashing the values
-    # Note: In practice you'd want a more secure commitment scheme
-    import hashlib
-    
-    # Convert values to bytes and hash them
-    param_bytes = str(param_vector).encode('utf-8')
-    commitment = hashlib.sha256(param_bytes).hexdigest()
-    
-    print(f"Commitment: {commitment}")
+    activations = flatten_list(activations["input_data"])
+
+    print(len(activations))
