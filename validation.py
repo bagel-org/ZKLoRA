@@ -150,7 +150,7 @@ def get_random_test_sample(test_dataset) -> tuple[torch.Tensor, torch.Tensor]:
 
 
 def prepare_wrapped_model(
-    mnist_model_path: str,
+    model_path: str,
     wrapped_model_path: str,
     single_data: torch.Tensor,
     single_target: torch.Tensor,
@@ -159,7 +159,7 @@ def prepare_wrapped_model(
     Prepares a wrapped model with loss function from a trained MNIST model.
 
     Args:
-        mnist_model_path (str): Path to the trained MNIST ONNX model
+        model_path (str): Path to the trained ONNX model
         wrapped_model_path (str): Path to the wrapped model ONNX file
         single_data: The single data sample
         single_target: The single target sample
@@ -169,7 +169,7 @@ def prepare_wrapped_model(
 
     """
     # Load the ONNX model
-    onnx_model = onnx.load(mnist_model_path)
+    onnx_model = onnx.load(model_path)
 
     # Convert ONNX model to PyTorch
     model = onnx2torch.convert(onnx_model)
