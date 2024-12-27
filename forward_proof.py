@@ -36,6 +36,7 @@ async def main():
     print("Generating settings...")
     start_time = time.time()
     ezkl.gen_settings(lora_path, py_run_args=py_run_args)
+
     ezkl.compile_circuit(lora_path, lora_ezkl, "settings.json")
     ezkl.gen_srs("kzg.srs", py_run_args.logrows)
     ezkl.setup(lora_ezkl, "vk.key", "pk.key", "kzg.srs")
