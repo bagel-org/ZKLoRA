@@ -4,6 +4,7 @@ import time
 import numpy as np
 import asyncio
 import json
+import onnxruntime
 
 def flatten_list(nested_list):
     if not isinstance(nested_list, list):
@@ -15,10 +16,9 @@ def flatten_list(nested_list):
     return nested_list
 
 async def main():
-
-    lora_path = "lora_onnx_params/base_model_model_lm_head.onnx"
+    lora_path = "lora_onnx_params/base_model_model_transformer_h_2_attn_c_attn.onnx"
     lora_ezkl = "model.ezkl"
-    activations_path = "intermediate_activations/base_model_model_lm_head.json"
+    activations_path = "intermediate_activations/base_model_model_transformer_h_2_attn_c_attn.json"
     
     onnx_model = onnx.load(lora_path)
     param_count = sum(np.prod(param.dims) for param in onnx_model.graph.initializer)
@@ -36,7 +36,6 @@ async def main():
     print("Generating settings...")
     start_time = time.time()
     ezkl.gen_settings(lora_path, py_run_args=py_run_args)
-    # ezkl.calibrate_settings("mnist_mlp.onnx", "settings.json", target="resources")
     ezkl.compile_circuit(lora_path, lora_ezkl, "settings.json")
     ezkl.gen_srs("kzg.srs", py_run_args.logrows)
     ezkl.setup(lora_ezkl, "vk.key", "pk.key", "kzg.srs")
@@ -46,46 +45,36 @@ async def main():
     #
     # Prove
     #
-
-    # Read and process the activations file
+    # Load the sub-layer activations
     with open(activations_path, "r") as f:
         activations_data = json.load(f)
     
-    print(activations_data)
-    # print the shape of the input data
-    print(np.array(activations_data["input_data"][0]).shape)
-    # print the fields of activations_data
-    print(activations_data.keys())
-    
-    # Try running the activations through the ONNX model to verify
-    import onnxruntime
-    
-    # Create ONNX inference session
-    session = onnxruntime.InferenceSession(lora_path)
-    
-    # Reshape the input data to match the expected 3D shape
-    input_data = np.array(activations_data["input_data"], dtype=np.float32)
-    #input_data = input_data.squeeze()  # Remove extra dimensions
-    # OR if you need specific dimensions:
-    input_data = input_data.reshape(1, 4, 768)  # Adjust numbers based on your model's requirements
+    print("Raw JSON keys:", activations_data.keys())
 
-    onnx_input = {"input_x": input_data}
-    
-    # Run ONNX inference
+    # Convert to float32 array
+    float_data = np.array(activations_data["input_data"], dtype=np.float32)
+    print("Activations shape (from JSON):", float_data.shape)
+
+    # 1) Check if we have any NaN or Inf
+    has_invalid = not np.all(np.isfinite(float_data))
+    print("Any NaN/Inf in data?:", has_invalid)
+    if has_invalid:
+        # fix them
+        float_data = np.nan_to_num(float_data, nan=0.0, posinf=1e5, neginf=-1e5)
+
+    # 2) If the submodule is hooking shape [1,4,768], confirm that or reshape if needed:
+    # For example:
+    # float_data = float_data.reshape((1,4,768))
+
+    # Let's do an ONNX check
+    session = onnxruntime.InferenceSession(lora_path)
+    onnx_input = {"input_x": float_data}
     onnx_output = session.run(None, onnx_input)
     print("ONNX model output shape:", onnx_output[0].shape)
     print("First few values of ONNX output:", onnx_output[0].flatten()[:5])
-    
-    # Flatten each value in activations_data
-    # flattened_values = [flatten_list(value) for value in activations_data.values()]
-    # activations_data = {"input_data": flattened_values}
-    
-    # Modify how the data is written to match EZKL's expected format
-    input_data = {
-        "input_data": input_data.tolist()  # Flatten the nested structure
-    }
-    
-    # Write to file
+
+    # Now build the final JSON for EZKL
+    input_data = {"input_data": float_data.tolist()}
     with open("input.json", "w") as f:
         json.dump(input_data, f)
 
@@ -98,8 +87,5 @@ async def main():
     end_time = time.time()
     print(f"Witness generation took {end_time - start_time:.2f} seconds")
 
-
-
 if __name__ == "__main__":
     asyncio.run(main())
-
