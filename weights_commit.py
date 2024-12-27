@@ -1,8 +1,21 @@
 import json
 import struct
 import numpy as np
+import csv
 
 def flatten_list(nested_list):
+    """
+    Recursively flattens a nested list structure into a single-level list.
+    If the input is not a list, returns it as a single-element list.
+    Empty lists return empty lists. For nested lists, only the first element
+    is processed recursively.
+    
+    Args:
+        nested_list: A potentially nested list structure
+        
+    Returns:
+        A flattened list containing non-list elements
+    """
     if not isinstance(nested_list, list):
         return [nested_list]
     if len(nested_list) == 0:
@@ -12,7 +25,16 @@ def flatten_list(nested_list):
     return nested_list
 
 def float32_to_uint64(activations):
-    # Convert float32 activations to uint64 encoding
+    """
+    Converts a list of float32 values to uint64 by reinterpreting the bytes.
+    Each float32 (4 bytes) is padded with 4 zero bytes to create uint64 (8 bytes).
+    
+    Args:
+        activations: List of float32 values
+        
+    Returns:
+        List of uint64 values representing the same bit patterns as the input floats
+    """
     float32_array = np.array(activations, dtype=np.float32)
     uint64_encoded = []
     
@@ -34,6 +56,9 @@ if __name__ == "__main__":
 
     uint64_activations = float32_to_uint64(activations)
 
+    hex_activations = [hex(val) for val in uint64_activations]
     
-    
+    with open('hex_activations.csv', 'w', newline='') as f:
+        writer = csv.writer(f, delimiter=';')
+        writer.writerow(hex_activations)
     
