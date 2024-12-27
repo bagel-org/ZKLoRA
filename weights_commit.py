@@ -52,8 +52,8 @@ def float32_to_uint64(activations):
 
 def generate_merkle_tree(activations_csv_path):
     """
-    Generates a Merkle tree from the given CSV file using lambdaworks CLI
-    and returns the root hash.
+    Generates a Merkle tree from the given CSV file using lambdaworks CLI,
+    writes the root hash to a file and returns the root hash.
 
     Args:
         activations_csv_path: Path to the CSV file containing the activations
