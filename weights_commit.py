@@ -50,6 +50,56 @@ def float32_to_uint64(activations):
     return uint64_encoded
 
 
+def generate_merkle_tree(activations_csv_path):
+    """
+    Generates a Merkle tree from the given CSV file using lambdaworks CLI
+    and returns the root hash.
+
+    Args:
+        activations_csv_path: Path to the CSV file containing the activations
+
+    Returns:
+        str: The Merkle tree root hash
+
+    Raises:
+        subprocess.CalledProcessError: If the Merkle tree generation fails
+    """
+    # Generate Merkle tree using lambdaworks CLI
+    try:
+        result = subprocess.run(
+            [
+                "cargo",
+                "run",
+                "--manifest-path",
+                "libs/lambdaworks/Cargo.toml",
+                "--release",
+                "--bin",
+                "merkle-tree-cli",
+                "generate-tree",
+                activations_csv_path,
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+
+    except subprocess.CalledProcessError as e:
+        print(f"Error generating Merkle tree: {e}")
+        print("Standard output:", e.stdout)
+        print("Standard error:", e.stderr)
+        raise
+
+    # Extract root from stdout using split on ':'
+    root_line = [line for line in result.stdout.split("\n") if "root:" in line][0]
+    root = root_line.split(":")[1].strip().replace('"', "")
+
+    # Write root to file
+    with open("root.txt", "w") as f:
+        f.write(root)
+
+    return root
+
+
 if __name__ == "__main__":
 
     activations_path = "intermediate_activations/base_model_model_lm_head.json"
@@ -62,44 +112,11 @@ if __name__ == "__main__":
 
     hex_activations = ["0x" + hex(val)[2:].upper() for val in uint64_activations]
 
+    activations_csv_path = "activations.csv"
+
     # Write without using csv.writer to have full control over formatting
-    with open("hex_activations.csv", "w", newline="") as f:
+    with open(activations_csv_path, "w", newline="") as f:
         f.write(";".join(hex_activations))
 
-        # Generate Merkle tree using lambdaworks CLI
-        try:
-            result = subprocess.run(
-                [
-                    "cargo",
-                    "run",
-                    "--manifest-path",
-                    "libs/lambdaworks/Cargo.toml",
-                    "--release",
-                    "--bin",
-                    "merkle-tree-cli",
-                    "generate-tree",
-                    "hex_activations.csv",
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-
-            # Access the output
-            print("Standard output:", result.stdout)
-
-        except subprocess.CalledProcessError as e:
-            print(f"Error generating Merkle tree: {e}")
-            print("Standard output:", e.stdout)
-            print("Standard error:", e.stderr)
-            raise
-
-        # Extract root from stdout using split on ':'
-        root_line = [line for line in result.stdout.split("\n") if "root:" in line][0]
-        root = root_line.split(":")[1].strip().replace('"', "")
-
-        print(root)
-
-        # Write root to file
-        with open("root.txt", "w") as f:
-            f.write(root)
+    # Generate tree and get root
+    generate_merkle_tree(activations_csv_path)
