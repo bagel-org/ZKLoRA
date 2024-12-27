@@ -56,9 +56,9 @@ if __name__ == "__main__":
 
     uint64_activations = float32_to_uint64(activations)
 
-    hex_activations = [hex(val) for val in uint64_activations]
+    hex_activations = ['0x' + hex(val)[2:].upper() for val in uint64_activations]
     
+    # Write without using csv.writer to have full control over formatting
     with open('hex_activations.csv', 'w', newline='') as f:
-        writer = csv.writer(f, delimiter=';')
-        writer.writerow(hex_activations)
+        f.write(';'.join(hex_activations))
     
