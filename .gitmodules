@@ -1,3 +1,0 @@
-[submodule "libs/merkle/dusk_merkle"]
-	path = libs/merkle/dusk_merkle
-	url = https://github.com/dusk-network/merkle.git
