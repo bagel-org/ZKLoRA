@@ -1,40 +1,67 @@
-use pyo3::prelude::*;
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) DUSK NETWORK. All rights reserved.
 
-use dusk_merkle::{Tree, Aggregate};
+use blake3::{Hash as Blake3Hash, Hasher};
+use dusk_merkle::{Aggregate, Tree};
+
+const EMPTY_HASH: Item = Item([0; 32]);
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-struct U8(u8);
+pub struct Item([u8; 32]);
 
-impl From<u8> for U8 {
-    fn from(n: u8) -> Self {
-        Self(n)
+impl From<Blake3Hash> for Item {
+    fn from(h: Blake3Hash) -> Self {
+        Self(h.into())
     }
 }
 
-const EMPTY_ITEM: U8 = U8(0);
+impl<const A: usize> Aggregate<A> for Item {
+    const EMPTY_SUBTREE: Self = EMPTY_HASH;
 
-impl Aggregate<A> for U8 {
-    const EMPTY_SUBTREE: U8 = EMPTY_ITEM;
-
-    fn aggregate(items: [&Self; A]) -> Self
-    {
-        items.into_iter().fold(U8(0), |acc, c| U8(acc.0 + c.0))
+    fn aggregate(items: [&Self; A]) -> Self {
+        let mut hasher = Hasher::new();
+        for item in items {
+            hasher.update(&item.0);
+        }
+        hasher.finalize().into()
     }
 }
 
-// Set the height and arity of the tree. 
-const H: usize = 3;
+impl Item {
+    #[must_use]
+    pub fn new(bytes: [u8; 32]) -> Self {
+        Item(bytes)
+    }
+}
+
+const H: usize = 16;
 const A: usize = 2;
 
 fn main() {
-    let mut tree = Tree::<U8, H, A>::new();
+    let mut tree = Tree::<Item, H, A>::new();
 
-    // No elements have been inserted so the root is the empty subtree.
-    assert_eq!(*tree.root(), U8::EMPTY_SUBTREE);
+    // fill the first 1000 Items in the tree
+    for pos in 0..1000u64 {
+        let hash_bytes = pos.to_be_bytes();
+        let mut hasher = Hasher::new();
+        hasher.update(&hash_bytes);
+        let hash: Item = hasher.finalize().into();
 
-    tree.insert(4, 21);
-    tree.insert(7, 21);
+        tree.insert(pos, hash);
+    }
 
-    // After elements have been inserted, the root will be modified.
-    assert_eq!(*tree.root(), U8(42));
+    // check that there is a leaf at pos 42 and remove it
+    let pos = 42;
+    assert!(tree.contains(pos));
+    let leaf = tree.remove(42).expect("There is a leaf at this position");
+
+    // insert the leaf back into the tree
+    tree.insert(pos, leaf);
+
+    // create opening from position 42 and verify it
+    let opening = tree.opening(42).expect("There is a leaf at this position");
+    assert!(opening.verify(leaf));
 }

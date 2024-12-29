@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 pyo3 = { version = "0.18", features = ["extension-module"] }
 dusk-merkle = "0.5.3"
+blake3 = "1.5"
