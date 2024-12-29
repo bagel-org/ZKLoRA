@@ -34,12 +34,6 @@ impl Item {
     }
 }
 
-#[pyfunction]
-fn add(a: i32, b: i32) -> PyResult<i32> {
-    Ok(a + b)
-}
-
-
 /// Creates a Merkle tree from a list of floating point values and returns its root hash.
 ///
 /// Each value is converted to bytes and hashed using BLAKE3 before being inserted into
@@ -70,15 +64,8 @@ pub fn insert_values(values: Vec<f64>) -> String {
     format!("0x{}", hex::encode(tree.root().0))
 }
 
-#[pyfunction]
-fn minus(a: i32, b: i32) -> PyResult<i32> {
-    Ok(a - b)
-}
-
 #[pymodule]
 fn merkle(_py: Python, m: &PyModule) -> PyResult<()> {
-    m.add_function(wrap_pyfunction!(add, m)?)?;
-    m.add_function(wrap_pyfunction!(minus, m)?)?;
     m.add_function(wrap_pyfunction!(insert_values, m)?)?;
     Ok(())
 }
