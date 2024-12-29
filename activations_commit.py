@@ -1,13 +1,28 @@
 import merkle
-print(merkle.add(3, 5)) 
-print(merkle.minus(3, 5)) 
+import json
+import numpy as np
 
-import random
+def get_merkle_root(activations_path: str) -> str:
+    """
+    Calculate the Merkle root hash of model activations stored in a JSON file.
+    
+    Args:
+        activations_path: Path to JSON file containing model activations under "input_data" key
+        
+    Returns:
+        str: Hexadecimal string of the Merkle root hash, prefixed with "0x"
+    """
+    # Load the intermediate activations from JSON file
+    with open(activations_path, 'r') as f:
+        activations = json.load(f)
 
-# Create a list of 10 random floating point numbers
-random_numbers = [random.uniform(-100, 100) for _ in range(10)]
-print("Random numbers:", random_numbers)
+    # Convert nested data to numpy array and flatten
+    flattened_np = np.array(activations["input_data"]).reshape(-1)
+    
+    # Get and return the Merkle root hash
+    return merkle.insert_values(flattened_np.tolist())
 
-# Get the Merkle root hash of these numbers
-merkle_root = merkle.insert_values(random_numbers)
-print("Merkle root:", merkle_root)
+if __name__ == "__main__":
+    activations_path = "intermediate_activations/base_model_model_lm_head.json"
+    merkle_root = get_merkle_root(activations_path)
+    print("Merkle root:", merkle_root)
