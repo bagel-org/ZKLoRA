@@ -6,10 +6,12 @@
 
 use blake3::{Hash as Blake3Hash, Hasher};
 use dusk_merkle::{Aggregate, Tree};
+use serde::Serialize;
+use hex;
 
 const EMPTY_HASH: Item = Item([0; 32]);
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize)]
 pub struct Item([u8; 32]);
 
 impl From<Blake3Hash> for Item {
@@ -64,4 +66,7 @@ fn main() {
     // create opening from position 42 and verify it
     let opening = tree.opening(42).expect("There is a leaf at this position");
     assert!(opening.verify(leaf));
+
+    println!("Tree: {:?}", tree.root().0);
+    println!("Root: 0x{}", hex::encode(tree.root().0));
 }
