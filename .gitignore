@@ -10,3 +10,4 @@ witness.json
 proof.json
 target
 Cargo.lock
+.vscode
