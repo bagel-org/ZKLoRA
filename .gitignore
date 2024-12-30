@@ -8,3 +8,6 @@ settings.json
 input.json
 witness.json
 proof.json
+target
+Cargo.lock
+.vscode

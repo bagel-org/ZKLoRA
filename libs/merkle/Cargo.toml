@@ -1,0 +1,14 @@
+[package]
+name = "merkle"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "merkle"
+crate-type = ["cdylib"]
+
+[dependencies]
+dusk-merkle = { version = "0.5.3" }
+pyo3 = { version = "0.19", features = ["extension-module"] }
+blake3 = "1.5"
+hex = "0.4"
