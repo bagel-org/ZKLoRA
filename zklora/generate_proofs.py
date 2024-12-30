@@ -74,6 +74,16 @@ def get_filenames(proof_dir: str, base_name: str):
 
 
 def verify_proof_batch(onnx_dir: str, proof_dir: str) -> None:
+    """
+    Batch verifies proofs for all ONNX models in the specified directory.
+
+    Args:
+        onnx_dir (str): Directory containing ONNX model files
+        proof_dir (str): Directory containing proof artifacts (proofs, verification keys, etc.)
+
+    Returns:
+        None: Prints verification results for each proof to stdout
+    """
     onnx_files = glob.glob(os.path.join(onnx_dir, "*.onnx"))
     if not onnx_files:
         print(f"No ONNX files found in {onnx_dir}.")
@@ -139,14 +149,18 @@ async def generate_proofs_async(
         param_count = sum(np.prod(param.dims) for param in onnx_model.graph.initializer)
         print(f"Number of parameters: {param_count:,}")
 
-        # We'll define consistent filenames
-        circuit_name = os.path.join(output_dir, f"{base_name}.ezkl")  # compiled circuit
-        settings_file = os.path.join(output_dir, f"{base_name}_settings.json")
-        srs_file = os.path.join(output_dir, "kzg.srs")
-        vk_file = os.path.join(output_dir, f"{base_name}.vk")
-        pk_file = os.path.join(output_dir, f"{base_name}.pk")
-        witness_file = os.path.join(output_dir, f"{base_name}_witness.json")
-        proof_file = os.path.join(output_dir, f"{base_name}.pf")
+        names = get_filenames(output_dir, base_name)
+        if names is None:
+            continue
+        (
+            circuit_name,
+            settings_file,
+            srs_file,
+            vk_file,
+            pk_file,
+            witness_file,
+            proof_file,
+        ) = names
 
         py_args = ezkl.PyRunArgs()
         py_args.input_visibility = "public"
