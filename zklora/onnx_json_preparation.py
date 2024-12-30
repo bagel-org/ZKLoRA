@@ -6,6 +6,7 @@ import numpy as np
 from peft import PeftModel
 from transformers import PreTrainedTokenizer, AutoTokenizer, AutoModelForCausalLM
 
+
 # A helper to fix shapes for A, B
 def fix_lora_shapes(A: torch.Tensor, B: torch.Tensor, x_data: np.ndarray):
     """
@@ -18,7 +19,7 @@ def fix_lora_shapes(A: torch.Tensor, B: torch.Tensor, x_data: np.ndarray):
     if a0 == in_dim:
         r = a1
     elif a1 == in_dim:
-        A = A.transpose(0,1)
+        A = A.transpose(0, 1)
         r = A.shape[1]
     else:
         raise ValueError(f"A shape {A.shape} doesn't match x_data last dim {in_dim}.")
@@ -27,23 +28,25 @@ def fix_lora_shapes(A: torch.Tensor, B: torch.Tensor, x_data: np.ndarray):
     if b0 == r:
         out_dim = b1
     elif b1 == r:
-        B = B.transpose(0,1)
+        B = B.transpose(0, 1)
         out_dim = B.shape[1]
     else:
         raise ValueError(f"B shape {B.shape} doesn't match rank={r} in any dimension.")
     return A, B, in_dim, r, out_dim
+
 
 class LoraApplyOneRow(nn.Module):
     """
     Expects shape (1, batch*seq_len*hidden_dim).
     Internal forward => reshape to (batch, seq_len, hidden_dim).
     """
+
     def __init__(self, A, B, batch_size, seq_len, hidden_dim):
         super().__init__()
         self.register_buffer("A", A)
         self.register_buffer("B", B)
         self.batch_size = batch_size
-        self.seq_len    = seq_len
+        self.seq_len = seq_len
         self.hidden_dim = hidden_dim
 
     def forward(self, x_1d):
@@ -55,13 +58,14 @@ class LoraApplyOneRow(nn.Module):
         out_2d = out_3d.view(1, -1)
         return out_2d
 
+
 def export_lora_submodules(
     model: PeftModel,
     tokenizer: PreTrainedTokenizer,
     input_texts: list[str],
     output_dir: str = "lora_onnx_params",
     json_dir: str = "intermediate_activations",
-    submodule_key: str = None
+    submodule_key: str = None,
 ) -> None:
     """
     1) Captures LoRA sub-layer inputs with shape (batch, seq_len, hidden_dim).
@@ -104,12 +108,14 @@ def export_lora_submodules(
         """
         for full_name, module in model.named_modules():
             # Check if this submodule has LoRA
-            if hasattr(module, 'lora_A') and hasattr(module, 'lora_B'):
+            if hasattr(module, "lora_A") and hasattr(module, "lora_B"):
                 # Skip embedding submodules
                 if "wte" in full_name or "wpe" in full_name:
                     nonlocal issued_wte_warning
                     if not issued_wte_warning:
-                        print(f"WARNING: Found LoRA submodule '{full_name}' (wte/wpe). Skipping hooking embeddings.")
+                        print(
+                            f"WARNING: Found LoRA submodule '{full_name}' (wte/wpe). Skipping hooking embeddings."
+                        )
                         issued_wte_warning = True
                     continue
 
@@ -126,6 +132,7 @@ def export_lora_submodules(
                         x = layer_inputs[0]  # shape: (batch, seq_len, hidden_dim)
                         print(f"shape in hook ({mod_name}):", x.size())
                         activation_map[mod_name] = x.detach().cpu().numpy()
+
                     return hook
 
                 module.register_forward_hook(make_hook(full_name))
@@ -133,12 +140,7 @@ def export_lora_submodules(
     register_lora_hooks(model)
 
     # Tokenize the input text as a single batch
-    inputs = tokenizer(
-        input_texts,
-        return_tensors='pt',
-        padding=True,
-        truncation=True
-    )
+    inputs = tokenizer(input_texts, return_tensors="pt", padding=True, truncation=True)
     input_ids = inputs["input_ids"]
     # e.g. shape: (batch, seq_len)
     print("input_ids shape:", input_ids.shape)
@@ -149,18 +151,16 @@ def export_lora_submodules(
 
     # If no sub-layer activations were captured
     if len(activation_map) == 0:
-        print("No LoRA sub-layer activations captured. Possibly no triggers for these inputs.")
+        print(
+            "No LoRA sub-layer activations captured. Possibly no triggers for these inputs."
+        )
         return
-
-    
-
-    
 
     # For each submodule hooking
     for full_name, x_data in activation_map.items():
         # x_data shape => (batch, seq_len, hidden_dim)
         batch_size = x_data.shape[0]
-        seq_len    = x_data.shape[1]
+        seq_len = x_data.shape[1]
         hidden_dim = x_data.shape[2]
 
         total_size = batch_size * seq_len * hidden_dim  # e.g. 3*4*768=9216
@@ -204,13 +204,17 @@ def export_lora_submodules(
 
         # fix shapes
         try:
-            A_fixed, B_fixed, in_dim, rank, out_dim = fix_lora_shapes(A_raw, B_raw, x_data)
+            A_fixed, B_fixed, in_dim, rank, out_dim = fix_lora_shapes(
+                A_raw, B_raw, x_data
+            )
         except ValueError as e:
             print(f"Shape fix error for {full_name}: {e}")
             continue
 
         # Build sub-module expecting => (1, total_size)
-        lora_mod = LoraApplyOneRow(A_fixed, B_fixed, batch_size, seq_len, hidden_dim).eval()
+        lora_mod = LoraApplyOneRow(
+            A_fixed, B_fixed, batch_size, seq_len, hidden_dim
+        ).eval()
 
         # Save ONNX
         safe_name = full_name.replace(".", "_").replace("/", "_")
@@ -231,7 +235,7 @@ def export_lora_submodules(
                 input_names=["input_x"],
                 output_names=["output"],
                 training=TrainingMode.TRAINING,
-                keep_initializers_as_inputs=False
+                keep_initializers_as_inputs=False,
             )
         except Exception as e:
             print(f"Export error for {full_name}: {e}")
