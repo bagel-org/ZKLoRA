@@ -1,4 +1,4 @@
-from zklora import export_lora_submodules_flattened, generate_proofs_async
+from zklora import export_lora_submodules, generate_proofs_async
 
 import asyncio
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -12,16 +12,18 @@ def main():
 
     tokenizer = AutoTokenizer.from_pretrained("distilgpt2")
 
+    # multiple text
+    texts = ["Hello from LoRA", "And another test", "One more line..."]
     # 2) Export only attn.c_attn submodules
     # This will produce ONNX + JSON in the specified dirs,
     # hooking only the submodules whose name contains "attn.c_attn".
-    export_lora_submodules_flattened(
+    export_lora_submodules(
         model=lora_model,
         tokenizer=tokenizer,
-        input_text="Hello from LoRA",
-        output_dir="lora_onnx_params",       # ONNX output
-        json_dir="intermediate_activations", # JSON output
-        submodule_key="attn.c_attn"          # filter for submodules named 'attn.c_attn'
+        input_texts=texts,  # pass list of strings
+        output_dir="lora_onnx_params",
+        json_dir="intermediate_activations",
+        submodule_key="attn.c_attn"
     )
 
     # 3) Generate proofs for each ONNX+JSON pair
