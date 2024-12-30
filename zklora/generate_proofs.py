@@ -28,39 +28,12 @@ def get_filenames(proof_dir: str, base_name: str):
             Returns None if any required file is missing.
     """
     circuit_name = os.path.join(proof_dir, f"{base_name}.ezkl")
-    if not os.path.isfile(circuit_name):
-        print(f"No matching circuit for {base_name}, skipping.")
-        return None
-
     settings_file = os.path.join(proof_dir, f"{base_name}_settings.json")
-    if not os.path.isfile(settings_file):
-        print(f"No matching settings for {base_name}, skipping.")
-        return None
-
     srs_file = os.path.join(proof_dir, "kzg.srs")
-    if not os.path.isfile(srs_file):
-        print(f"No SRS for {base_name}, skipping.")
-        return None
-
     vk_file = os.path.join(proof_dir, f"{base_name}.vk")
-    if not os.path.isfile(vk_file):
-        print(f"No matching VK for {base_name}, skipping.")
-        return None
-
     pk_file = os.path.join(proof_dir, f"{base_name}.pk")
-    if not os.path.isfile(pk_file):
-        print(f"No matching PK for {base_name}, skipping.")
-        return None
-
     witness_file = os.path.join(proof_dir, f"{base_name}_witness.json")
-    if not os.path.isfile(witness_file):
-        print(f"No matching witness for {base_name}, skipping.")
-        return None
-
     proof_file = os.path.join(proof_dir, f"{base_name}.pf")
-    if not os.path.isfile(proof_file):
-        print(f"No matching proof for {base_name}, skipping.")
-        return None
 
     return (
         circuit_name,
