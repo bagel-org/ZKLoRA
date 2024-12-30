@@ -41,6 +41,14 @@ def export_lora_submodules_flattened_multi(
     activation_map = {}
     issued_wte_warning = False
 
+    # -- NEW PART: ensure pad token is set
+    if tokenizer.pad_token is None:
+        # Approach #1: use EOS as pad
+        tokenizer.pad_token = tokenizer.eos_token
+        # Approach #2 (alternative): add a real PAD token and resize model
+        # tokenizer.add_special_tokens({'pad_token': '[PAD]'})
+        # model.resize_token_embeddings(len(tokenizer))
+
     def register_lora_hooks_recursive(model, activation_map):
         """
         Recursively finds LoRA submodules, skipping 'wte'/'wpe' if found,
