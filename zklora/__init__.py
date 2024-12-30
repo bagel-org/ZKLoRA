@@ -1,2 +1,2 @@
-from .onnx_json_preparation import export_lora_submodules_flattened_multi
+from .onnx_json_preparation import export_lora_submodules
 from .generate_proofs import generate_proofs_async
