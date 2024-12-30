@@ -11,3 +11,7 @@ proof.json
 target
 Cargo.lock
 .vscode
+__pycache__
+proof_artifacts
+lora_onnx_params
+intermediate_activations
