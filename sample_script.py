@@ -45,5 +45,5 @@ def main():
 
 
 if __name__ == "__main__":
-    #main()
+    main()
     verify_proof_batch("lora_onnx_params", "proof_artifacts")
