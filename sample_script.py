@@ -1,4 +1,4 @@
-from zklora import export_lora_submodules, generate_proofs_async, verify_proof
+from zklora import export_lora_submodules, generate_proofs_async, verify_proof_batch
 
 import asyncio
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -46,9 +46,4 @@ def main():
 
 if __name__ == "__main__":
     #main()
-    verify_proof(
-        "proof_artifacts/base_model_model_transformer_h_0_attn_c_attn.pf",
-        "proof_artifacts/base_model_model_transformer_h_0_attn_c_attn_settings.json",
-        "proof_artifacts/base_model_model_transformer_h_0_attn_c_attn.vk",
-        "proof_artifacts/kzg.srs",
-    )
+    verify_proof_batch("lora_onnx_params", "proof_artifacts")
