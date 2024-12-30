@@ -104,7 +104,10 @@ def verify_proof_batch(onnx_dir: str, proof_dir: str) -> None:
             proof_file,
         ) = names
         print(f"Verifying proof for {base_name}...")
-        verify_ok =  ezkl.verify(proof_file, settings_file, vk_file, srs_file)
+        start_time = time.time()
+        verify_ok = ezkl.verify(proof_file, settings_file, vk_file, srs_file)
+        end_time = time.time()
+        print(f"Verification took {end_time - start_time:.2f} seconds")
         if verify_ok:
             print(f"Proof verified successfully for {base_name}!\n")
         else:
@@ -211,10 +214,13 @@ async def generate_proofs_async(
 
         # 4) prove
         print("Generating proof...")
+        start_time = time.time()
         prove_ok = ezkl.prove(
             witness_file, circuit_name, pk_file, proof_file, "single", srs_file
         )
-        print("Proof result:", prove_ok)
+        end_time = time.time()
+        print(f"Proof generation took {end_time - start_time:.2f} sec")
+        #print("Proof result:", prove_ok)
         if not prove_ok:
             print(f"Proof generation failed for {base_name}")
             continue
