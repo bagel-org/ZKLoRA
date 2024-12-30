@@ -1,4 +1,4 @@
-from zklora import export_lora_submodules_flattened, generate_proofs_async, verify_proof
+from zklora import export_lora_submodules, generate_proofs_async, verify_proof
 
 import asyncio
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -27,10 +27,6 @@ def main():
         output_dir="lora_onnx_params",
         json_dir="intermediate_activations",
         submodule_key="attn.c_attn"
-        input_text="Hello from LoRA",
-        output_dir="lora_onnx_params",  # ONNX output
-        json_dir="intermediate_activations",  # JSON output
-        submodule_key="attn.c_attn",  # filter for submodules named 'attn.c_attn'
     )
 
     # 3) Generate proofs for each ONNX+JSON pair
