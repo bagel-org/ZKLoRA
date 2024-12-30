@@ -6,6 +6,55 @@ import numpy as np
 from peft import PeftModel
 from transformers import PreTrainedTokenizer, AutoTokenizer, AutoModelForCausalLM
 
+# A helper to fix shapes for A, B
+def fix_lora_shapes(A: torch.Tensor, B: torch.Tensor, x_data: np.ndarray):
+    """
+    x_data shape => (batch, seq_len, hidden_dim).
+    We ensure A => [hidden_dim, r], B => [r, out_dim].
+    """
+    in_dim = x_data.shape[-1]
+    a0, a1 = A.shape
+    # A => [in_dim, r]
+    if a0 == in_dim:
+        r = a1
+    elif a1 == in_dim:
+        A = A.transpose(0,1)
+        r = A.shape[1]
+    else:
+        raise ValueError(f"A shape {A.shape} doesn't match x_data last dim {in_dim}.")
+
+    b0, b1 = B.shape
+    if b0 == r:
+        out_dim = b1
+    elif b1 == r:
+        B = B.transpose(0,1)
+        out_dim = B.shape[1]
+    else:
+        raise ValueError(f"B shape {B.shape} doesn't match rank={r} in any dimension.")
+    return A, B, in_dim, r, out_dim
+
+class LoraApplyOneRow(nn.Module):
+    """
+    Expects shape (1, batch*seq_len*hidden_dim).
+    Internal forward => reshape to (batch, seq_len, hidden_dim).
+    """
+    def __init__(self, A, B, batch_size, seq_len, hidden_dim):
+        super().__init__()
+        self.register_buffer("A", A)
+        self.register_buffer("B", B)
+        self.batch_size = batch_size
+        self.seq_len    = seq_len
+        self.hidden_dim = hidden_dim
+
+    def forward(self, x_1d):
+        # x_1d => shape (1, total_size)
+        x_3d = x_1d.view(self.batch_size, self.seq_len, self.hidden_dim)
+        out_3d = (x_3d @ self.A) @ self.B
+        out_3d = out_3d + x_3d.mean() + self.A.sum() + self.B.sum()
+        # Flatten output for demonstration
+        out_2d = out_3d.view(1, -1)
+        return out_2d
+
 def export_lora_submodules(
     model: PeftModel,
     tokenizer: PreTrainedTokenizer,
@@ -103,54 +152,9 @@ def export_lora_submodules(
         print("No LoRA sub-layer activations captured. Possibly no triggers for these inputs.")
         return
 
-    # A helper to fix shapes for A, B
-    def fix_lora_shapes(A: torch.Tensor, B: torch.Tensor, x_data: np.ndarray):
-        """
-        x_data shape => (batch, seq_len, hidden_dim).
-        We ensure A => [hidden_dim, r], B => [r, out_dim].
-        """
-        in_dim = x_data.shape[-1]
-        a0, a1 = A.shape
-        # A => [in_dim, r]
-        if a0 == in_dim:
-            r = a1
-        elif a1 == in_dim:
-            A = A.transpose(0,1)
-            r = A.shape[1]
-        else:
-            raise ValueError(f"A shape {A.shape} doesn't match x_data last dim {in_dim}.")
+    
 
-        b0, b1 = B.shape
-        if b0 == r:
-            out_dim = b1
-        elif b1 == r:
-            B = B.transpose(0,1)
-            out_dim = B.shape[1]
-        else:
-            raise ValueError(f"B shape {B.shape} doesn't match rank={r} in any dimension.")
-        return A, B, in_dim, r, out_dim
-
-    class LoraApplyOneRow(nn.Module):
-        """
-        Expects shape (1, batch*seq_len*hidden_dim).
-        Internal forward => reshape to (batch, seq_len, hidden_dim).
-        """
-        def __init__(self, A, B, batch_size, seq_len, hidden_dim):
-            super().__init__()
-            self.register_buffer("A", A)
-            self.register_buffer("B", B)
-            self.batch_size = batch_size
-            self.seq_len    = seq_len
-            self.hidden_dim = hidden_dim
-
-        def forward(self, x_1d):
-            # x_1d => shape (1, total_size)
-            x_3d = x_1d.view(self.batch_size, self.seq_len, self.hidden_dim)
-            out_3d = (x_3d @ self.A) @ self.B
-            out_3d = out_3d + x_3d.mean() + self.A.sum() + self.B.sum()
-            # Flatten output for demonstration
-            out_2d = out_3d.view(1, -1)
-            return out_2d
+    
 
     # For each submodule hooking
     for full_name, x_data in activation_map.items():
