@@ -213,7 +213,10 @@ async def generate_proofs_async(
         prove_ok = ezkl.prove(
             witness_file, circuit_name, pk_file, proof_file, "single", srs_file
         )
-        print("Proof result:", prove_ok)
+        end_time = time.time()
+        print(f"Proof gen took {end_time - start_time:.2f} sec")
+        total_prove_time += end_time - start_time
+
         if not prove_ok:
             print(f"Proof generation failed for {base_name}")
             continue
