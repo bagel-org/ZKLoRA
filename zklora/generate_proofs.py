@@ -55,7 +55,7 @@ def verify_proof_batch(onnx_dir: str, proof_dir: str) -> None:
         proof_dir (str): Directory containing proof artifacts (proofs, verification keys, etc.)
 
     Returns:
-        None: Prints verification results for each proof to stdout
+        tuple[float, int]: Total time spent verifying proofs, number of proofs verified
     """
     onnx_files = glob.glob(os.path.join(onnx_dir, "*.onnx"))
     if not onnx_files:
@@ -85,13 +85,14 @@ def verify_proof_batch(onnx_dir: str, proof_dir: str) -> None:
             print(f"Proof verified successfully for {base_name}!\n")
         else:
             print(f"Verification failed for {base_name}.\n")
+    
+    return end_time - start_time, len(onnx_files)
 
 
 async def generate_proofs_async(
     onnx_dir: str,
     json_dir: str,
-    output_dir: str = ".",
-    do_verify: bool = True
+    output_dir: str = "."
 ):
     """
     Asynchronously scans onnx_dir for .onnx files and json_dir for .json files.
