@@ -8,7 +8,6 @@ import json
 import onnxruntime
 import asyncio
 
-
 def get_filenames(proof_dir: str, base_name: str):
     """
     Retrieves paths for all required proof-related files given a directory and base name.
@@ -47,7 +46,7 @@ def get_filenames(proof_dir: str, base_name: str):
     )
 
 
-def verify_proof_batch(onnx_dir: str, proof_dir: str) -> tuple[float, int]:
+def verify_proof_batch(onnx_dir: str, proof_dir: str) -> None:
     """
     Batch verifies proofs for all ONNX models in the specified directory.
 
@@ -56,12 +55,12 @@ def verify_proof_batch(onnx_dir: str, proof_dir: str) -> tuple[float, int]:
         proof_dir (str): Directory containing proof artifacts (proofs, verification keys, etc.)
 
     Returns:
-        tuple[float, int]: Total time spent verifying proofs, number of proofs verified
+        None: Prints verification results for each proof to stdout
     """
     onnx_files = glob.glob(os.path.join(onnx_dir, "*.onnx"))
     if not onnx_files:
         print(f"No ONNX files found in {onnx_dir}.")
-        return 0
+        return
 
     for onnx_path in onnx_files:
         base_name = os.path.splitext(os.path.basename(onnx_path))[0]
@@ -87,10 +86,13 @@ def verify_proof_batch(onnx_dir: str, proof_dir: str) -> tuple[float, int]:
         else:
             print(f"Verification failed for {base_name}.\n")
 
-        return end_time - start_time, len(onnx_files)
 
-
-async def generate_proofs_async(onnx_dir: str, json_dir: str, output_dir: str = "."):
+async def generate_proofs_async(
+    onnx_dir: str,
+    json_dir: str,
+    output_dir: str = ".",
+    do_verify: bool = True
+):
     """
     Asynchronously scans onnx_dir for .onnx files and json_dir for .json files.
     For each matching pair, runs:
@@ -208,10 +210,7 @@ async def generate_proofs_async(onnx_dir: str, json_dir: str, output_dir: str = 
         prove_ok = ezkl.prove(
             witness_file, circuit_name, pk_file, proof_file, "single", srs_file
         )
-        end_time = time.time()
-        print(f"Proof generation took {end_time - start_time:.2f} sec")
-        total_prove_time += end_time - start_time
-        # print("Proof result:", prove_ok)
+        print("Proof result:", prove_ok)
         if not prove_ok:
             print(f"Proof generation failed for {base_name}")
             continue

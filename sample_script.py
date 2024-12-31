@@ -7,8 +7,8 @@ from peft import PeftModel
 
 def main():
     # 1) Load base & LoRA model
-    base_model = AutoModelForCausalLM.from_pretrained("openai-community/gpt2")
-    lora_model = PeftModel.from_pretrained(base_model, "palsp/gpt2-lora")
+    base_model = AutoModelForCausalLM.from_pretrained("distilgpt2")
+    lora_model = PeftModel.from_pretrained(base_model, "q1e123/peft-starcoder-lora-a100")
     lora_model.eval()
 
     tokenizer = AutoTokenizer.from_pretrained("openai-community/gpt2")
@@ -31,18 +31,14 @@ def main():
     # We'll store circuit artifacts, keys, proofs, etc., in "proof_artifacts".
     # Only the submodules named 'attn.c_attn' will appear in lora_onnx_params + intermediate_activations
     # because that's what we filtered in step 2.
-    total_settings_time, total_witness_time, total_prove_time, count_onnx_files = (
-        asyncio.run(
-            generate_proofs_async(
-                onnx_dir="lora_onnx_params",
-                json_dir="intermediate_activations",
-                output_dir="proof_artifacts",
-            )
+    asyncio.run(
+        generate_proofs_async(
+            onnx_dir="lora_onnx_params",
+            json_dir="intermediate_activations",
+            output_dir="proof_artifacts"
         )
     )
 
-    verify_proof_batch("lora_onnx_params", "proof_artifacts")
-
-
 if __name__ == "__main__":
     main()
+    verify_proof_batch("lora_onnx_params", "proof_artifacts")
