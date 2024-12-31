@@ -7,7 +7,7 @@ import numpy as np
 import json
 import onnxruntime
 import asyncio
-import csv
+
 def get_filenames(proof_dir: str, base_name: str):
     """
     Retrieves paths for all required proof-related files given a directory and base name.
@@ -88,7 +88,7 @@ def verify_proof_batch(onnx_dir: str, proof_dir: str) -> None:
 
 
 async def generate_proofs_async(
-    onnx_dir: str, json_dir: str, output_dir: str = ".", csv_path: str | None = None
+    onnx_dir: str, json_dir: str, output_dir: str = "."
 ):
     """
     Asynchronously scans onnx_dir for .onnx files and json_dir for .json files.
@@ -103,24 +103,6 @@ async def generate_proofs_async(
     without hitting "no running event loop" in a loop.
     """
 
-    if csv_path is not None:
-        if not os.path.isfile(csv_path):
-            # Create empty CSV file if it doesn't exist
-            with open(csv_path, 'w') as f:
-                writer = csv.writer(f)
-                writer.writerow([
-                    'lora_name',
-                    'num_loras',
-                    'total_num_params',
-                    'avg_num_params',
-                    'total_settings_time',
-                    'total_witness_time', 
-                    'total_prove_time',
-                    'avg_settings_time',
-                    'avg_witness_time',
-                    'avg_prove_time'
-                ])
-
     os.makedirs(output_dir, exist_ok=True)
 
     onnx_files = glob.glob(os.path.join(onnx_dir, "*.onnx"))
@@ -131,6 +113,7 @@ async def generate_proofs_async(
     total_settings_time = 0
     total_witness_time = 0
     total_prove_time = 0
+    count_onnx_files = 0
     for onnx_path in onnx_files:
         base_name = os.path.splitext(os.path.basename(onnx_path))[0]
         json_path = os.path.join(json_dir, base_name + ".json")
@@ -178,6 +161,7 @@ async def generate_proofs_async(
         ezkl.setup(circuit_name, vk_file, pk_file, srs_file)
         end_time = time.time()
         print(f"Setup for {base_name} took {end_time - start_time:.2f} sec")
+        total_settings_time += end_time - start_time
 
         # Local check
         with open(json_path, "r") as f:
@@ -205,7 +189,7 @@ async def generate_proofs_async(
 
         end_time = time.time()
         print(f"Witness gen took {end_time - start_time:.2f} sec")
-
+        total_witness_time += end_time - start_time
         # 4) prove
         print("Generating proof...")
         start_time = time.time()
@@ -214,12 +198,16 @@ async def generate_proofs_async(
         )
         end_time = time.time()
         print(f"Proof generation took {end_time - start_time:.2f} sec")
+        total_prove_time += end_time - start_time
         #print("Proof result:", prove_ok)
         if not prove_ok:
             print(f"Proof generation failed for {base_name}")
             continue
 
         print(f"Done with {base_name}.\n")
+        count_onnx_files += 1
+
+    return total_settings_time, total_witness_time, total_prove_time, count_onnx_files
 
 
 if __name__ == "__main__":
