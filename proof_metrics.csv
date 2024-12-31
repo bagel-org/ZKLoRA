@@ -1,0 +1,2 @@
+base_model,lora,number_of_loras,total_params,avg_params,total_settings,total_witness,total_prove,avg_settings,avg_witness,avg_prove,total_verify,avg_verify
+distilgpt2,peft-starcoder-lora-a100,24,589824,24576.0,1029.4821441173553,354.7537751197815,820.7091000080109,42.89508933822314,14.781407296657562,34.196212500333786,0.7455854415893555,0.031066060066223145

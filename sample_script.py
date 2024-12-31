@@ -16,7 +16,7 @@ def main():
     )
     lora_model.eval()
 
-    tokenizer = AutoTokenizer.from_pretrained("openai-community/gpt2")
+    tokenizer = AutoTokenizer.from_pretrained("distilgpt2")
 
     # multiple text
     texts = ["Hello from LoRA", "And another test", "One more line..."]
@@ -28,7 +28,7 @@ def main():
         tokenizer=tokenizer,
         input_texts=texts,  # pass list of strings
         output_dir="lora_onnx_params",
-        json_dir="intermediate_activations",
+        json_dir="intermediate_activations"
     )
 
     csv_path = "proof_metrics.csv"
