@@ -141,7 +141,7 @@ async def generate_proofs_async(
         py_args = ezkl.PyRunArgs()
         py_args.input_visibility = "public"
         py_args.output_visibility = "public"
-        py_args.param_visibility = "fixed"
+        py_args.param_visibility = "private"
         py_args.logrows = 20
 
         print("Generating settings & compiling circuit...")
