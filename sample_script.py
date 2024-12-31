@@ -1,13 +1,16 @@
-from zklora import export_lora_submodules, generate_proofs_async
+from zklora import export_lora_submodules, generate_proofs_async, verify_proof_batch
 
 import asyncio
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import PeftModel
 
+
 def main():
     # 1) Load base & LoRA model
     base_model = AutoModelForCausalLM.from_pretrained("distilgpt2")
-    lora_model = PeftModel.from_pretrained(base_model, "q1e123/peft-starcoder-lora-a100")
+    lora_model = PeftModel.from_pretrained(
+        base_model, "q1e123/peft-starcoder-lora-a100"
+    )
     lora_model.eval()
 
     tokenizer = AutoTokenizer.from_pretrained("distilgpt2")
@@ -34,9 +37,13 @@ def main():
         generate_proofs_async(
             onnx_dir="lora_onnx_params",
             json_dir="intermediate_activations",
-            output_dir="proof_artifacts"
+            output_dir="proof_artifacts",
         )
     )
 
+    # verify_proof(proof_file, settings_file, vk_file, srs_file)
+
+
 if __name__ == "__main__":
     main()
+    verify_proof_batch("lora_onnx_params", "proof_artifacts")

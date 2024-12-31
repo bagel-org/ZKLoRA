@@ -8,12 +8,87 @@ import json
 import onnxruntime
 import asyncio
 
+def get_filenames(proof_dir: str, base_name: str):
+    """
+    Retrieves paths for all required proof-related files given a directory and base name.
+
+    Args:
+        proof_dir (str): Directory containing the proof artifacts
+        base_name (str): Base name of the files (without extension)
+
+    Returns:
+        tuple | None: A 7-tuple containing paths to:
+            - circuit file (.ezkl)
+            - settings file (_settings.json)
+            - SRS file (kzg.srs)
+            - verification key file (.vk)
+            - proving key file (.pk)
+            - witness file (_witness.json)
+            - proof file (.pf)
+            Returns None if any required file is missing.
+    """
+    circuit_name = os.path.join(proof_dir, f"{base_name}.ezkl")
+    settings_file = os.path.join(proof_dir, f"{base_name}_settings.json")
+    srs_file = os.path.join(proof_dir, "kzg.srs")
+    vk_file = os.path.join(proof_dir, f"{base_name}.vk")
+    pk_file = os.path.join(proof_dir, f"{base_name}.pk")
+    witness_file = os.path.join(proof_dir, f"{base_name}_witness.json")
+    proof_file = os.path.join(proof_dir, f"{base_name}.pf")
+
+    return (
+        circuit_name,
+        settings_file,
+        srs_file,
+        vk_file,
+        pk_file,
+        witness_file,
+        proof_file,
+    )
+
+
+def verify_proof_batch(onnx_dir: str, proof_dir: str) -> None:
+    """
+    Batch verifies proofs for all ONNX models in the specified directory.
+
+    Args:
+        onnx_dir (str): Directory containing ONNX model files
+        proof_dir (str): Directory containing proof artifacts (proofs, verification keys, etc.)
+
+    Returns:
+        None: Prints verification results for each proof to stdout
+    """
+    onnx_files = glob.glob(os.path.join(onnx_dir, "*.onnx"))
+    if not onnx_files:
+        print(f"No ONNX files found in {onnx_dir}.")
+        return
+
+    for onnx_path in onnx_files:
+        base_name = os.path.splitext(os.path.basename(onnx_path))[0]
+        names = get_filenames(proof_dir, base_name)
+        if names is None:
+            continue
+        (
+            circuit_name,
+            settings_file,
+            srs_file,
+            vk_file,
+            pk_file,
+            witness_file,
+            proof_file,
+        ) = names
+        print(f"Verifying proof for {base_name}...")
+        start_time = time.time()
+        verify_ok = ezkl.verify(proof_file, settings_file, vk_file, srs_file)
+        end_time = time.time()
+        print(f"Verification took {end_time - start_time:.2f} seconds")
+        if verify_ok:
+            print(f"Proof verified successfully for {base_name}!\n")
+        else:
+            print(f"Verification failed for {base_name}.\n")
+
 
 async def generate_proofs_async(
-    onnx_dir: str,
-    json_dir: str,
-    output_dir: str = ".",
-    do_verify: bool = True
+    onnx_dir: str, json_dir: str, output_dir: str = ".", do_verify: bool = True
 ):
     """
     Asynchronously scans onnx_dir for .onnx files and json_dir for .json files.
@@ -22,7 +97,7 @@ async def generate_proofs_async(
       2) gen_srs + setup
       3) gen_witness (async)
       4) prove + optional verify
-    
+
     Since this function is fully async, you can call it once with:
       asyncio.run(generate_proofs_async(...))
     without hitting "no running event loop" in a loop.
@@ -50,19 +125,23 @@ async def generate_proofs_async(
         param_count = sum(np.prod(param.dims) for param in onnx_model.graph.initializer)
         print(f"Number of parameters: {param_count:,}")
 
-        # We'll define consistent filenames
-        circuit_name   = os.path.join(output_dir, f"{base_name}.ezkl")       # compiled circuit
-        settings_file  = os.path.join(output_dir, f"{base_name}_settings.json")
-        srs_file       = os.path.join(output_dir, "kzg.srs")
-        vk_file        = os.path.join(output_dir, f"{base_name}.vk")
-        pk_file        = os.path.join(output_dir, f"{base_name}.pk")
-        witness_file   = os.path.join(output_dir, f"{base_name}_witness.json")
-        proof_file     = os.path.join(output_dir, f"{base_name}.pf")
+        names = get_filenames(output_dir, base_name)
+        if names is None:
+            continue
+        (
+            circuit_name,
+            settings_file,
+            srs_file,
+            vk_file,
+            pk_file,
+            witness_file,
+            proof_file,
+        ) = names
 
         py_args = ezkl.PyRunArgs()
         py_args.input_visibility = "public"
         py_args.output_visibility = "public"
-        py_args.param_visibility = "fixed"
+        py_args.param_visibility = "private"
         py_args.logrows = 20
 
         print("Generating settings & compiling circuit...")
@@ -93,9 +172,7 @@ async def generate_proofs_async(
         start_time = time.time()
         try:
             await ezkl.gen_witness(
-                data=json_path,
-                model=circuit_name,
-                output=witness_file
+                data=json_path, model=circuit_name, output=witness_file
             )
         except RuntimeError as e:
             print(f"Failed to generate witness: {e}")
@@ -110,28 +187,16 @@ async def generate_proofs_async(
 
         # 4) prove
         print("Generating proof...")
+        start_time = time.time()
         prove_ok = ezkl.prove(
-            witness_file,
-            circuit_name,
-            pk_file,
-            proof_file,
-            "single",
-            srs_file
+            witness_file, circuit_name, pk_file, proof_file, "single", srs_file
         )
-        print("Proof result:", prove_ok)
+        end_time = time.time()
+        print(f"Proof generation took {end_time - start_time:.2f} sec")
+        #print("Proof result:", prove_ok)
         if not prove_ok:
             print(f"Proof generation failed for {base_name}")
             continue
-
-        # optional verify
-        if do_verify:
-            print("Verifying proof...")
-            verify_ok = ezkl.verify(proof_file, settings_file, vk_file, srs_file)
-            print("Verification result:", verify_ok)
-            if verify_ok:
-                print("Proof verified successfully!")
-            else:
-                print("Verification failed.")
 
         print(f"Done with {base_name}.\n")
 
@@ -161,19 +226,18 @@ if __name__ == "__main__":
     #     output_dir="proof_artifacts",
     #     do_verify=True
     # ))
-    
+
     import sys
     import asyncio
 
     # or parse from sys.argv
     onnx_dir = "lora_onnx_params"
     json_dir = "intermediate_activations"
-    out_dir  = "proof_artifacts"
+    out_dir = "proof_artifacts"
 
     # Run everything in one single event loop
-    asyncio.run(generate_proofs_async(
-        onnx_dir=onnx_dir,
-        json_dir=json_dir,
-        output_dir=out_dir,
-        do_verify=True
-    ))
+    asyncio.run(
+        generate_proofs_async(
+            onnx_dir=onnx_dir, json_dir=json_dir, output_dir=out_dir, do_verify=True
+        )
+    )
