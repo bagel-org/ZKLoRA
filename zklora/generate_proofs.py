@@ -8,6 +8,7 @@ import json
 import onnxruntime
 import asyncio
 
+
 def get_filenames(proof_dir: str, base_name: str):
     """
     Retrieves paths for all required proof-related files given a directory and base name.
@@ -87,9 +88,7 @@ def verify_proof_batch(onnx_dir: str, proof_dir: str) -> None:
             print(f"Verification failed for {base_name}.\n")
 
 
-async def generate_proofs_async(
-    onnx_dir: str, json_dir: str, output_dir: str = "."
-):
+async def generate_proofs_async(onnx_dir: str, json_dir: str, output_dir: str = "."):
     """
     Asynchronously scans onnx_dir for .onnx files and json_dir for .json files.
     For each matching pair, runs:
@@ -101,6 +100,17 @@ async def generate_proofs_async(
     Since this function is fully async, you can call it once with:
       asyncio.run(generate_proofs_async(...))
     without hitting "no running event loop" in a loop.
+
+    # Args:
+        onnx_dir (str): Directory containing ONNX model files
+        json_dir (str): Directory containing input JSON files
+        output_dir (str): Directory to store proof artifacts (default: current directory)
+
+    # Returns:
+        - total_settings_time (float): Total time spent on settings/setup
+        - total_witness_time (float): Total time spent generating witnesses
+        - total_prove_time (float): Total time spent generating proofs
+        - count_onnx_files (int): Number of ONNX files successfully processed
     """
 
     os.makedirs(output_dir, exist_ok=True)
@@ -199,7 +209,7 @@ async def generate_proofs_async(
         end_time = time.time()
         print(f"Proof generation took {end_time - start_time:.2f} sec")
         total_prove_time += end_time - start_time
-        #print("Proof result:", prove_ok)
+        # print("Proof result:", prove_ok)
         if not prove_ok:
             print(f"Proof generation failed for {base_name}")
             continue
