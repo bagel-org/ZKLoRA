@@ -129,6 +129,7 @@ async def generate_proofs_async(
     total_witness_time = 0
     total_prove_time = 0
     count_onnx_files = 0
+    total_params = 0
     for onnx_path in onnx_files:
         base_name = os.path.splitext(os.path.basename(onnx_path))[0]
         json_path = os.path.join(json_dir, base_name + ".json")
@@ -143,6 +144,7 @@ async def generate_proofs_async(
         onnx_model = onnx.load(onnx_path)
         param_count = sum(np.prod(param.dims) for param in onnx_model.graph.initializer)
         print(f"Number of parameters: {param_count:,}")
+        total_params += param_count
 
         names = get_filenames(output_dir, base_name)
         if names is None:
@@ -219,7 +221,7 @@ async def generate_proofs_async(
         print(f"Done with {base_name}.\n")
         count_onnx_files += 1
 
-    return total_settings_time, total_witness_time, total_prove_time, count_onnx_files
+    return total_settings_time, total_witness_time, total_prove_time, total_params, count_onnx_files
 
 
 if __name__ == "__main__":
