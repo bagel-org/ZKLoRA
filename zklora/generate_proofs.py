@@ -222,6 +222,7 @@ async def generate_proofs_async(
             continue
 
         print(f"Done with {base_name}.\n")
+        os.remove(pk_file)
         count_onnx_files += 1
 
     return total_settings_time, total_witness_time, total_prove_time, total_params, count_onnx_files
