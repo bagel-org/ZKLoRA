@@ -60,7 +60,9 @@ def verify_proof_batch(onnx_dir: str, proof_dir: str) -> None:
     onnx_files = glob.glob(os.path.join(onnx_dir, "*.onnx"))
     if not onnx_files:
         print(f"No ONNX files found in {onnx_dir}.")
-        return
+        return 0.0, 0  # or return None
+
+    total_verify_time = 0.0
 
     for onnx_path in onnx_files:
         base_name = os.path.splitext(os.path.basename(onnx_path))[0]
@@ -76,17 +78,22 @@ def verify_proof_batch(onnx_dir: str, proof_dir: str) -> None:
             witness_file,
             proof_file,
         ) = names
+        
         print(f"Verifying proof for {base_name}...")
         start_time = time.time()
         verify_ok = ezkl.verify(proof_file, settings_file, vk_file, srs_file)
         end_time = time.time()
-        print(f"Verification took {end_time - start_time:.2f} seconds")
+        
+        duration = end_time - start_time
+        total_verify_time += duration
+        print(f"Verification took {duration:.2f} seconds")
+        
         if verify_ok:
             print(f"Proof verified successfully for {base_name}!\n")
         else:
             print(f"Verification failed for {base_name}.\n")
     
-    return end_time - start_time, len(onnx_files)
+    return total_verify_time, len(onnx_files)
 
 
 async def generate_proofs_async(
