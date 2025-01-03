@@ -62,11 +62,12 @@ class LoraApplyOneRow(nn.Module):
 def make_lora_hook(mod_name, activation_map):
     """
     Creates a forward hook function for LoRA modules that stores activations.
-    
+
     :param mod_name: Name of the module to hook
     :param activation_map: Dictionary to store activations
     :return: Hook function
     """
+
     def hook(mod, layer_inputs, layer_output):
         if not layer_inputs:
             return
@@ -80,21 +81,23 @@ def make_lora_hook(mod_name, activation_map):
 def register_lora_hooks(model, activation_map, submodule_key=None):
     """
     Recursively finds LoRA submodules and registers forward hooks.
-    
+
     :param model: The model to register hooks on
     :param activation_map: Dictionary to store activations
     :param submodule_key: Optional key to filter submodules
     :return: True if any wte/wpe warnings were issued
     """
     issued_wte_warning = False
-    
+
     for full_name, module in model.named_modules():
         # Check if this submodule has LoRA
         if hasattr(module, "lora_A") and hasattr(module, "lora_B"):
             # Skip embedding submodules
             if "wte" in full_name or "wpe" in full_name:
                 if not issued_wte_warning:
-                    print(f"WARNING: Found LoRA submodule '{full_name}' (wte/wpe). Skipping hooking embeddings.")
+                    print(
+                        f"WARNING: Found LoRA submodule '{full_name}' (wte/wpe). Skipping hooking embeddings."
+                    )
                     issued_wte_warning = True
                 continue
 
@@ -104,7 +107,7 @@ def register_lora_hooks(model, activation_map, submodule_key=None):
 
             print(f"Registering hook on LoRA submodule: {full_name}")
             module.register_forward_hook(make_lora_hook(full_name, activation_map))
-    
+
     return issued_wte_warning
 
 
@@ -155,7 +158,9 @@ def export_lora_submodules(
 
     # If no sub-layer activations were captured
     if len(activation_map) == 0:
-        print("No LoRA sub-layer activations captured. Possibly no triggers for these inputs.")
+        print(
+            "No LoRA sub-layer activations captured. Possibly no triggers for these inputs."
+        )
         return
 
     # For each submodule hooking
@@ -251,40 +256,3 @@ def export_lora_submodules(
 
         print(f"Exported ONNX for {full_name} -> {onnx_path}")
         print(f"Saved JSON -> {json_path}, shape => {one_row.shape}")
-
-
-###########################################################
-# Example usage in another script:
-#
-# from zklora_one_row import export_lora_submodules_one_row
-# from generate_proofs_async import generate_proofs_async   # your proof function
-# import asyncio
-#
-# base_model = AutoModelForCausalLM.from_pretrained("distilgpt2")
-# lora_model = PeftModel.from_pretrained(base_model, "some-lora-adapter")
-# lora_model.eval()
-# tokenizer = AutoTokenizer.from_pretrained("distilgpt2")
-#
-# texts = [
-#     "Hello from LoRA",
-#     "Another line of text for multi-batch",
-#     "One more line"
-# ]
-#
-# export_lora_submodules_one_row(
-#     model=lora_model,
-#     tokenizer=tokenizer,
-#     input_texts=texts,
-#     output_dir="lora_onnx_params",
-#     json_dir="intermediate_activations",
-#     submodule_key="attn.c_attn"  # or None to export all LoRA submodules
-# )
-#
-# # Then run proof generation:
-# # asyncio.run(generate_proofs_async(
-# #     onnx_dir="lora_onnx_params",
-# #     json_dir="intermediate_activations",
-# #     output_dir="proof_artifacts"
-# # ))
-#
-###########################################################
