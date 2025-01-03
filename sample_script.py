@@ -9,14 +9,18 @@ import csv
 
 
 def main():
+    base_model_name = "distilgpt2"
+    #base_model_name = "openai-community/gpt2"
+    lora_model_name = "q1e123/peft-starcoder-lora-a100"
+    #lora_model_name = "palsp/gpt2-lora"
     # 1) Load base & LoRA model
-    base_model = AutoModelForCausalLM.from_pretrained("distilgpt2")
+    base_model = AutoModelForCausalLM.from_pretrained(base_model_name)
     lora_model = PeftModel.from_pretrained(
-        base_model, "q1e123/peft-starcoder-lora-a100"
+        base_model, lora_model_name
     )
     lora_model.eval()
 
-    tokenizer = AutoTokenizer.from_pretrained("distilgpt2")
+    tokenizer = AutoTokenizer.from_pretrained(base_model_name)
 
     # multiple text
     texts = ["Hello from LoRA", "And another test", "One more line..."]
@@ -73,8 +77,8 @@ def main():
     with open(csv_path, 'a', newline='') as f:
         writer = csv.writer(f)
         writer.writerow([
-            "distilgpt2",  # base_model 
-            "peft-starcoder-lora-a100",  # lora
+            base_model_name,  # base_model 
+            lora_model_name,  # lora
             count_onnx_files,  # number_of_loras
             total_params,  # total_params
             avg_params,  # avg_params
