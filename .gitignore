@@ -18,6 +18,7 @@ intermediate_activations
 *.aux
 *.log
 *.out
-*.bbl
+main.bbl
 *.blg
 *.synctex.gz
+*.bib
