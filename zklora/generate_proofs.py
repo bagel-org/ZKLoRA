@@ -55,12 +55,14 @@ def verify_proof_batch(onnx_dir: str, proof_dir: str) -> None:
         proof_dir (str): Directory containing proof artifacts (proofs, verification keys, etc.)
 
     Returns:
-        None: Prints verification results for each proof to stdout
+        tuple[float, int]: Total time spent verifying proofs, number of proofs verified
     """
     onnx_files = glob.glob(os.path.join(onnx_dir, "*.onnx"))
     if not onnx_files:
         print(f"No ONNX files found in {onnx_dir}.")
-        return
+        return 0.0, 0  # or return None
+
+    total_verify_time = 0.0
 
     for onnx_path in onnx_files:
         base_name = os.path.splitext(os.path.basename(onnx_path))[0]
@@ -76,19 +78,28 @@ def verify_proof_batch(onnx_dir: str, proof_dir: str) -> None:
             witness_file,
             proof_file,
         ) = names
+        
         print(f"Verifying proof for {base_name}...")
         start_time = time.time()
         verify_ok = ezkl.verify(proof_file, settings_file, vk_file, srs_file)
         end_time = time.time()
-        print(f"Verification took {end_time - start_time:.2f} seconds")
+        
+        duration = end_time - start_time
+        total_verify_time += duration
+        print(f"Verification took {duration:.2f} seconds")
+        
         if verify_ok:
             print(f"Proof verified successfully for {base_name}!\n")
         else:
             print(f"Verification failed for {base_name}.\n")
+    
+    return total_verify_time, len(onnx_files)
 
 
 async def generate_proofs_async(
-    onnx_dir: str, json_dir: str, output_dir: str = ".", do_verify: bool = True
+    onnx_dir: str,
+    json_dir: str,
+    output_dir: str = "."
 ):
     """
     Asynchronously scans onnx_dir for .onnx files and json_dir for .json files.
@@ -101,6 +112,17 @@ async def generate_proofs_async(
     Since this function is fully async, you can call it once with:
       asyncio.run(generate_proofs_async(...))
     without hitting "no running event loop" in a loop.
+
+    ## Args:
+        onnx_dir (str): Directory containing ONNX model files
+        json_dir (str): Directory containing input JSON files
+        output_dir (str): Directory to store proof artifacts (default: current directory)
+
+    ## Returns:
+        - total_settings_time (float): Total time spent on settings/setup
+        - total_witness_time (float): Total time spent generating witnesses
+        - total_prove_time (float): Total time spent generating proofs
+        - count_onnx_files (int): Number of ONNX files successfully processed
     """
 
     os.makedirs(output_dir, exist_ok=True)
@@ -110,6 +132,11 @@ async def generate_proofs_async(
         print(f"No ONNX files found in {onnx_dir}.")
         return
 
+    total_settings_time = 0
+    total_witness_time = 0
+    total_prove_time = 0
+    count_onnx_files = 0
+    total_params = 0
     for onnx_path in onnx_files:
         base_name = os.path.splitext(os.path.basename(onnx_path))[0]
         json_path = os.path.join(json_dir, base_name + ".json")
@@ -124,6 +151,7 @@ async def generate_proofs_async(
         onnx_model = onnx.load(onnx_path)
         param_count = sum(np.prod(param.dims) for param in onnx_model.graph.initializer)
         print(f"Number of parameters: {param_count:,}")
+        total_params += param_count
 
         names = get_filenames(output_dir, base_name)
         if names is None:
@@ -157,6 +185,7 @@ async def generate_proofs_async(
         ezkl.setup(circuit_name, vk_file, pk_file, srs_file)
         end_time = time.time()
         print(f"Setup for {base_name} took {end_time - start_time:.2f} sec")
+        total_settings_time += end_time - start_time
 
         # Local check
         with open(json_path, "r") as f:
@@ -184,7 +213,7 @@ async def generate_proofs_async(
 
         end_time = time.time()
         print(f"Witness gen took {end_time - start_time:.2f} sec")
-
+        total_witness_time += end_time - start_time
         # 4) prove
         print("Generating proof...")
         start_time = time.time()
@@ -192,13 +221,18 @@ async def generate_proofs_async(
             witness_file, circuit_name, pk_file, proof_file, "single", srs_file
         )
         end_time = time.time()
-        print(f"Proof generation took {end_time - start_time:.2f} sec")
-        #print("Proof result:", prove_ok)
+        print(f"Proof gen took {end_time - start_time:.2f} sec")
+        total_prove_time += end_time - start_time
+
         if not prove_ok:
             print(f"Proof generation failed for {base_name}")
             continue
 
         print(f"Done with {base_name}.\n")
+        os.remove(pk_file)
+        count_onnx_files += 1
+
+    return total_settings_time, total_witness_time, total_prove_time, total_params, count_onnx_files
 
 
 if __name__ == "__main__":
