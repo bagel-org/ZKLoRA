@@ -59,6 +59,55 @@ class LoraApplyOneRow(nn.Module):
         return out_2d
 
 
+def make_lora_hook(mod_name, activation_map):
+    """
+    Creates a forward hook function for LoRA modules that stores activations.
+    
+    :param mod_name: Name of the module to hook
+    :param activation_map: Dictionary to store activations
+    :return: Hook function
+    """
+    def hook(mod, layer_inputs, layer_output):
+        if not layer_inputs:
+            return
+        x = layer_inputs[0]  # shape: (batch, seq_len, hidden_dim)
+        print(f"shape in hook ({mod_name}):", x.size())
+        activation_map[mod_name] = x.detach().cpu().numpy()
+
+    return hook
+
+
+def register_lora_hooks(model, activation_map, submodule_key=None):
+    """
+    Recursively finds LoRA submodules and registers forward hooks.
+    
+    :param model: The model to register hooks on
+    :param activation_map: Dictionary to store activations
+    :param submodule_key: Optional key to filter submodules
+    :return: True if any wte/wpe warnings were issued
+    """
+    issued_wte_warning = False
+    
+    for full_name, module in model.named_modules():
+        # Check if this submodule has LoRA
+        if hasattr(module, "lora_A") and hasattr(module, "lora_B"):
+            # Skip embedding submodules
+            if "wte" in full_name or "wpe" in full_name:
+                if not issued_wte_warning:
+                    print(f"WARNING: Found LoRA submodule '{full_name}' (wte/wpe). Skipping hooking embeddings.")
+                    issued_wte_warning = True
+                continue
+
+            # If user wants to filter e.g. "attn.c_attn"
+            if submodule_key and submodule_key not in full_name:
+                continue
+
+            print(f"Registering hook on LoRA submodule: {full_name}")
+            module.register_forward_hook(make_lora_hook(full_name, activation_map))
+    
+    return issued_wte_warning
+
+
 def export_lora_submodules(
     model: PeftModel,
     tokenizer: PreTrainedTokenizer,
@@ -74,9 +123,6 @@ def export_lora_submodules(
        - Inside that submodule's forward pass, it reshapes back to (batch, seq_len, hidden_dim).
     4) Writes a JSON file containing a single row of floats ( shape => (1, total_size) ).
 
-    This function alone does not generate proofs; it only creates the ONNX/JSON pairs.
-    You can run your separate proof-generation code (like `generate_proofs_async`) on them.
-
     :param model:         A LoRA-augmented (PEFT) model, in eval mode.
     :param tokenizer:     A tokenizer (from the same or compatible base model).
     :param input_texts:   A list of strings for batched input. e.g. ["Hello", "More text", ...]
@@ -84,65 +130,23 @@ def export_lora_submodules(
     :param json_dir:      Where to save JSON files.
     :param submodule_key: If set (e.g. "attn.c_attn"), export only submodules containing that key.
     """
-
     # Ensure directories exist
     os.makedirs(output_dir, exist_ok=True)
     os.makedirs(json_dir, exist_ok=True)
 
     # Ensure we can pad if GPT-2-like
     if tokenizer.pad_token is None:
-        # Option 1: use eos token as pad
         tokenizer.pad_token = tokenizer.eos_token
-        # Option 2 (alternative):
-        # tokenizer.add_special_tokens({'pad_token': '[PAD]'})
-        # model.resize_token_embeddings(len(tokenizer))
 
     # We'll store each sub-layer input in a dict
     activation_map = {}
-    issued_wte_warning = False
 
-    def register_lora_hooks(model):
-        """
-        Recursively finds LoRA submodules. If submodule_key is set, only keep those with submodule_key in the name.
-        If submodule is 'wte'/'wpe', skip hooking.
-        """
-        for full_name, module in model.named_modules():
-            # Check if this submodule has LoRA
-            if hasattr(module, "lora_A") and hasattr(module, "lora_B"):
-                # Skip embedding submodules
-                if "wte" in full_name or "wpe" in full_name:
-                    nonlocal issued_wte_warning
-                    if not issued_wte_warning:
-                        print(
-                            f"WARNING: Found LoRA submodule '{full_name}' (wte/wpe). Skipping hooking embeddings."
-                        )
-                        issued_wte_warning = True
-                    continue
-
-                # If user wants to filter e.g. "attn.c_attn"
-                if submodule_key and submodule_key not in full_name:
-                    continue
-
-                print(f"Registering hook on LoRA submodule: {full_name}")
-
-                def make_hook(mod_name):
-                    def hook(mod, layer_inputs, layer_output):
-                        if not layer_inputs:
-                            return
-                        x = layer_inputs[0]  # shape: (batch, seq_len, hidden_dim)
-                        print(f"shape in hook ({mod_name}):", x.size())
-                        activation_map[mod_name] = x.detach().cpu().numpy()
-
-                    return hook
-
-                module.register_forward_hook(make_hook(full_name))
-
-    register_lora_hooks(model)
+    # Register hooks
+    register_lora_hooks(model, activation_map, submodule_key)
 
     # Tokenize the input text as a single batch
     inputs = tokenizer(input_texts, return_tensors="pt", padding=True, truncation=True)
     input_ids = inputs["input_ids"]
-    # e.g. shape: (batch, seq_len)
     print("input_ids shape:", input_ids.shape)
 
     # Run forward pass
@@ -151,9 +155,7 @@ def export_lora_submodules(
 
     # If no sub-layer activations were captured
     if len(activation_map) == 0:
-        print(
-            "No LoRA sub-layer activations captured. Possibly no triggers for these inputs."
-        )
+        print("No LoRA sub-layer activations captured. Possibly no triggers for these inputs.")
         return
 
     # For each submodule hooking
