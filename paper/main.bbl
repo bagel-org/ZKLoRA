@@ -1,0 +1,9 @@
+\begin{thebibliography}{1}
+
+\bibitem{hu2021lora}
+Edward~J Hu, Yelong Shen, Phillip Wallis, Zeyuan Allen-Zhu, Yuanzhi Li, Shean
+  Wang, Lu~Wang, and Weizhu Chen.
+\newblock Lora: Low-rank adaptation of large language models.
+\newblock {\em arXiv preprint arXiv:2106.09685}, 2021.
+
+\end{thebibliography}
