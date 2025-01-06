@@ -107,6 +107,7 @@ async def generate_proofs_async(
     onnx_dir: str = "lora_onnx_params",
     json_dir: str = "intermediate_activations",
     output_dir: str = "proof_artifacts",
+    verbose: bool = False,
 ):
     """
     Asynchronously scans onnx_dir for .onnx files and json_dir for .json files.
@@ -124,7 +125,7 @@ async def generate_proofs_async(
         onnx_dir (str): Directory containing ONNX model files
         json_dir (str): Directory containing input JSON files
         output_dir (str): Directory to store proof artifacts (default: current directory)
-
+        verbose (bool): Whether to print verbose output
     ## Returns:
         - total_settings_time (float): Total time spent on settings/setup
         - total_witness_time (float): Total time spent generating witnesses
@@ -139,11 +140,15 @@ async def generate_proofs_async(
         print(f"No ONNX files found in {onnx_dir}.")
         return
 
+    if verbose:
+        print(f"Found {len(onnx_files)} ONNX files in {onnx_dir}.")
+
     total_settings_time = 0
     total_witness_time = 0
     total_prove_time = 0
     count_onnx_files = 0
     total_params = 0
+    print("Processing ONNX files for proof generation...")
     for onnx_path in onnx_files:
         base_name = os.path.splitext(os.path.basename(onnx_path))[0]
         json_path = os.path.join(json_dir, base_name + ".json")
@@ -151,13 +156,15 @@ async def generate_proofs_async(
             print(f"No matching JSON for {onnx_path}, skipping.")
             continue
 
-        print("==========================================")
-        print(f"Preparing to prove with ONNX: {onnx_path}")
-        print(f"Matching JSON: {json_path}")
+        if verbose:
+            print("==========================================")
+            print(f"Preparing to prove with ONNX: {onnx_path}")
+            print(f"Matching JSON: {json_path}")
 
         onnx_model = onnx.load(onnx_path)
         param_count = sum(np.prod(param.dims) for param in onnx_model.graph.initializer)
-        print(f"Number of parameters: {param_count:,}")
+        if verbose:
+            print(f"Number of parameters: {param_count:,}")
         total_params += param_count
 
         names = get_filenames(output_dir, base_name)
@@ -179,7 +186,8 @@ async def generate_proofs_async(
         py_args.param_visibility = "private"
         py_args.logrows = 20
 
-        print("Generating settings & compiling circuit...")
+        if verbose:
+            print("Generating settings & compiling circuit...")
         start_time = time.time()
 
         # 1) gen_settings + compile_circuit
@@ -191,20 +199,24 @@ async def generate_proofs_async(
             ezkl.gen_srs(srs_file, py_args.logrows)
         ezkl.setup(circuit_name, vk_file, pk_file, srs_file)
         end_time = time.time()
-        print(f"Setup for {base_name} took {end_time - start_time:.2f} sec")
+        if verbose:
+            print(f"Setup for {base_name} took {end_time - start_time:.2f} sec")
         total_settings_time += end_time - start_time
 
         # Local check
         with open(json_path, "r") as f:
             data = json.load(f)
         input_array = np.array(data["input_data"], dtype=np.float32)
-        print("Input shape from JSON:", input_array.shape)
+        if verbose:
+            print("Input shape from JSON:", input_array.shape)
         session = onnxruntime.InferenceSession(onnx_path)
         out = session.run(None, {"input_x": input_array})
-        print("Local ONNX output shape:", out[0].shape)
+        if verbose:
+            print("Local ONNX output shape:", out[0].shape)
 
         # 3) gen_witness (async)
-        print("Generating witness (async)...")
+        if verbose:
+            print("Generating witness (async)...")
         start_time = time.time()
         try:
             await ezkl.gen_witness(
@@ -219,26 +231,31 @@ async def generate_proofs_async(
             continue
 
         end_time = time.time()
-        print(f"Witness gen took {end_time - start_time:.2f} sec")
+        if verbose:
+            print(f"Witness gen took {end_time - start_time:.2f} sec")
         total_witness_time += end_time - start_time
         # 4) prove
-        print("Generating proof...")
+        if verbose:
+            print("Generating proof...")
         start_time = time.time()
         prove_ok = ezkl.prove(
             witness_file, circuit_name, pk_file, proof_file, "single", srs_file
         )
         end_time = time.time()
-        print(f"Proof gen took {end_time - start_time:.2f} sec")
+        if verbose:
+            print(f"Proof gen took {end_time - start_time:.2f} sec")
         total_prove_time += end_time - start_time
 
         if not prove_ok:
             print(f"Proof generation failed for {base_name}")
             continue
 
-        print(f"Done with {base_name}.\n")
+        if verbose:
+            print(f"Done with {base_name}.\n")
         os.remove(pk_file)
         count_onnx_files += 1
 
+    print("Proof generation complete.")
     return (
         total_settings_time,
         total_witness_time,
