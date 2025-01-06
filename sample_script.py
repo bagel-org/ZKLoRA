@@ -25,8 +25,6 @@ export_lora_submodules(
     model=lora_model,
     tokenizer=tokenizer,
     input_texts=texts,  # pass list of strings
-    output_dir="lora_onnx_params",
-    json_dir="intermediate_activations",
     submodule_key="attn.c_attn",
     verbose=True,
 )
@@ -58,19 +56,10 @@ columns = [
     total_prove_time,
     total_params,
     count_onnx_files,
-) = asyncio.run(
-    generate_proofs(
-        onnx_dir="lora_onnx_params",
-        json_dir="intermediate_activations",
-        output_dir="proof_artifacts",
-        verbose=True,
-    )
-)
+) = asyncio.run(generate_proofs(verbose=True))
 
-total_verify_time, count_proofs = batch_verify_proofs(
-    "proof_artifacts",
-    verbose=True,
-)
+# 4) Verify proofs
+total_verify_time, count_proofs = batch_verify_proofs(verbose=True)
 
 if not os.path.exists(csv_path):
     with open(csv_path, "w", newline="") as f:
