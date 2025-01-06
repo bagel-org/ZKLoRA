@@ -1,10 +1,12 @@
-import os
 import json
+import os
+from typing import List
+
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
 from peft import PeftModel
-from transformers import PreTrainedTokenizer, AutoTokenizer, AutoModelForCausalLM
+from transformers import PreTrainedTokenizer
 
 
 # A helper to fix shapes for A, B

@@ -1,14 +1,15 @@
 import os
 import glob
-import onnx
-import ezkl
-import time
-import numpy as np
 import json
-import onnxruntime
+import time
 import asyncio
 
-def get_filenames(proof_dir: str, base_name: str):
+import numpy as np
+import onnx
+import onnxruntime
+import ezkl
+
+def resolve_proof_paths(proof_dir: str, base_name: str) -> tuple[str, str, str, str, str, str, str] | None:
     """
     Retrieves paths for all required proof-related files given a directory and base name.
 
@@ -46,7 +47,7 @@ def get_filenames(proof_dir: str, base_name: str):
     )
 
 
-def verify_proof_batch(onnx_dir: str, proof_dir: str) -> None:
+def batch_verify_proofs(onnx_dir: str, proof_dir: str) -> tuple[float, int]:
     """
     Batch verifies proofs for all ONNX models in the specified directory.
 
@@ -66,18 +67,11 @@ def verify_proof_batch(onnx_dir: str, proof_dir: str) -> None:
 
     for onnx_path in onnx_files:
         base_name = os.path.splitext(os.path.basename(onnx_path))[0]
-        names = get_filenames(proof_dir, base_name)
+        names = resolve_proof_paths(proof_dir, base_name)
         if names is None:
             continue
-        (
-            circuit_name,
-            settings_file,
-            srs_file,
-            vk_file,
-            pk_file,
-            witness_file,
-            proof_file,
-        ) = names
+        # Only unpack the variables we need
+        _, settings_file, srs_file, vk_file, _, _, proof_file = names
         
         print(f"Verifying proof for {base_name}...")
         start_time = time.time()
@@ -96,11 +90,11 @@ def verify_proof_batch(onnx_dir: str, proof_dir: str) -> None:
     return total_verify_time, len(onnx_files)
 
 
-async def generate_proofs_async(
+async def generate_proofs(
     onnx_dir: str,
     json_dir: str,
     output_dir: str = "."
-):
+) -> tuple[float, float, float, int, int] | None:
     """
     Asynchronously scans onnx_dir for .onnx files and json_dir for .json files.
     For each matching pair, runs:
@@ -153,7 +147,7 @@ async def generate_proofs_async(
         print(f"Number of parameters: {param_count:,}")
         total_params += param_count
 
-        names = get_filenames(output_dir, base_name)
+        names = resolve_proof_paths(output_dir, base_name)
         if names is None:
             continue
         (
@@ -271,7 +265,7 @@ if __name__ == "__main__":
 
     # Run everything in one single event loop
     asyncio.run(
-        generate_proofs_async(
+        generate_proofs(
             onnx_dir=onnx_dir, json_dir=json_dir, output_dir=out_dir, do_verify=True
         )
     )
