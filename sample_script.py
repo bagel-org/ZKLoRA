@@ -8,8 +8,8 @@ import os
 import csv
 
 
-base_model_name = "distilgpt2"
-lora_model_name = "q1e123/peft-starcoder-lora-a100"
+base_model_name = "meta-llama/Llama-3.2-1B"
+lora_model_name = "Chryslerx10/Llama-3.2-1B-finetuned-generalQA-peft-4bit"
 base_model = AutoModelForCausalLM.from_pretrained(base_model_name)
 lora_model = PeftModel.from_pretrained(base_model, lora_model_name)
 lora_model.eval()
@@ -25,7 +25,6 @@ export_lora_submodules(
     model=lora_model,
     tokenizer=tokenizer,
     input_texts=texts,  # pass list of strings
-    submodule_key="attn.c_attn",
     verbose=True,
 )
 
