@@ -3,47 +3,34 @@ import glob
 import json
 import time
 import asyncio
+from typing import NamedTuple
 
 import numpy as np
 import onnx
 import onnxruntime
 import ezkl
 
-def resolve_proof_paths(proof_dir: str, base_name: str) -> tuple[str, str, str, str, str, str, str] | None:
+class ProofPaths(NamedTuple):
+    circuit: str
+    settings: str
+    srs: str
+    verification_key: str
+    proving_key: str
+    witness: str
+    proof: str
+
+def resolve_proof_paths(proof_dir: str, base_name: str) -> ProofPaths | None:
     """
     Retrieves paths for all required proof-related files given a directory and base name.
-
-    Args:
-        proof_dir (str): Directory containing the proof artifacts
-        base_name (str): Base name of the files (without extension)
-
-    Returns:
-        tuple | None: A 7-tuple containing paths to:
-            - circuit file (.ezkl)
-            - settings file (_settings.json)
-            - SRS file (kzg.srs)
-            - verification key file (.vk)
-            - proving key file (.pk)
-            - witness file (_witness.json)
-            - proof file (.pf)
-            Returns None if any required file is missing.
     """
-    circuit_name = os.path.join(proof_dir, f"{base_name}.ezkl")
-    settings_file = os.path.join(proof_dir, f"{base_name}_settings.json")
-    srs_file = os.path.join(proof_dir, "kzg.srs")
-    vk_file = os.path.join(proof_dir, f"{base_name}.vk")
-    pk_file = os.path.join(proof_dir, f"{base_name}.pk")
-    witness_file = os.path.join(proof_dir, f"{base_name}_witness.json")
-    proof_file = os.path.join(proof_dir, f"{base_name}.pf")
-
-    return (
-        circuit_name,
-        settings_file,
-        srs_file,
-        vk_file,
-        pk_file,
-        witness_file,
-        proof_file,
+    return ProofPaths(
+        circuit=os.path.join(proof_dir, f"{base_name}.ezkl"),
+        settings=os.path.join(proof_dir, f"{base_name}_settings.json"),
+        srs=os.path.join(proof_dir, "kzg.srs"),
+        verification_key=os.path.join(proof_dir, f"{base_name}.vk"),
+        proving_key=os.path.join(proof_dir, f"{base_name}.pk"),
+        witness=os.path.join(proof_dir, f"{base_name}_witness.json"),
+        proof=os.path.join(proof_dir, f"{base_name}.pf")
     )
 
 
@@ -71,11 +58,11 @@ def batch_verify_proofs(onnx_dir: str, proof_dir: str) -> tuple[float, int]:
         if names is None:
             continue
         # Only unpack the variables we need
-        _, settings_file, srs_file, vk_file, _, _, proof_file = names
+        paths = names  # more descriptive variable name
         
         print(f"Verifying proof for {base_name}...")
         start_time = time.time()
-        verify_ok = ezkl.verify(proof_file, settings_file, vk_file, srs_file)
+        verify_ok = ezkl.verify(paths.proof, paths.settings, paths.verification_key, paths.srs)
         end_time = time.time()
         
         duration = end_time - start_time
