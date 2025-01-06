@@ -10,7 +10,6 @@ import csv
 
 base_model_name = "distilgpt2"
 lora_model_name = "q1e123/peft-starcoder-lora-a100"
-# 1) Load base & LoRA model
 base_model = AutoModelForCausalLM.from_pretrained(base_model_name)
 lora_model = PeftModel.from_pretrained(base_model, lora_model_name)
 lora_model.eval()
