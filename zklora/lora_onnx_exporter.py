@@ -10,7 +10,9 @@ from transformers import PreTrainedTokenizer
 
 
 # A helper to fix shapes for A, B
-def normalize_lora_matrices(A: torch.Tensor, B: torch.Tensor, x_data: np.ndarray) -> tuple[torch.Tensor, torch.Tensor, int, int, int]:
+def normalize_lora_matrices(
+    A: torch.Tensor, B: torch.Tensor, x_data: np.ndarray
+) -> tuple[torch.Tensor, torch.Tensor, int, int, int]:
     """
     x_data shape => (batch, seq_len, hidden_dim).
     We ensure A => [hidden_dim, r], B => [r, out_dim].
@@ -63,14 +65,19 @@ class LoraShapeTransformer(nn.Module):
 
 def make_activation_hook(mod_name: str, activation_map: dict) -> callable:
     """Creates a hook function for capturing LoRA submodule activations."""
+
     def hook(mod, layer_inputs, layer_output) -> None:
         if not layer_inputs:
             return
         x = layer_inputs[0]  # shape: (batch, seq_len, hidden_dim)
         activation_map[mod_name] = x.detach().cpu().numpy()
+
     return hook
 
-def register_lora_hooks(model: PeftModel, activation_map: dict, submodule_key: str = None) -> None:
+
+def register_lora_hooks(
+    model: PeftModel, activation_map: dict, submodule_key: str = None
+) -> None:
     """
     Recursively finds LoRA submodules and registers forward hooks.
     Args:
@@ -79,15 +86,17 @@ def register_lora_hooks(model: PeftModel, activation_map: dict, submodule_key: s
         submodule_key: If set, only hook submodules containing this key
     """
     issued_wte_warning = False
-    
+
     for full_name, module in model.named_modules():
         # Check if this submodule has LoRA
         if hasattr(module, "lora_A") and hasattr(module, "lora_B"):
             # Skip embedding submodules
             if "wte" in full_name or "wpe" in full_name:
                 if not issued_wte_warning:
-                    print("WARNING: Found LoRA submodule '{full_name}' (wte/wpe). "
-                          "Skipping hooking embeddings.")
+                    print(
+                        "WARNING: Found LoRA submodule '{full_name}' (wte/wpe). "
+                        "Skipping hooking embeddings."
+                    )
                     issued_wte_warning = True
                 continue
 
@@ -95,7 +104,10 @@ def register_lora_hooks(model: PeftModel, activation_map: dict, submodule_key: s
             if submodule_key and submodule_key not in full_name:
                 continue
 
-            module.register_forward_hook(make_activation_hook(full_name, activation_map))
+            module.register_forward_hook(
+                make_activation_hook(full_name, activation_map)
+            )
+
 
 def export_lora_submodules(
     model: PeftModel,
@@ -139,7 +151,7 @@ def export_lora_submodules(
 
     # We'll store each sub-layer input in a dict
     activation_map = {}
-    
+
     # Register hooks before forward pass
     register_lora_hooks(model, activation_map, submodule_key)
 
