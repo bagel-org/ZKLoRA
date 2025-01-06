@@ -1,4 +1,4 @@
-from zklora import export_lora_submodules, generate_proofs_async, verify_proof_batch
+from zklora import export_lora_submodules, generate_proofs, batch_verify_proofs
 
 import asyncio
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -54,7 +54,7 @@ def main():
     # because that's what we filtered in step 2.
     total_settings_time, total_witness_time, total_prove_time, total_params, count_onnx_files = (
         asyncio.run(
-            generate_proofs_async(
+            generate_proofs(
                 onnx_dir="lora_onnx_params",
                 json_dir="intermediate_activations",
                 output_dir="proof_artifacts",
@@ -62,7 +62,7 @@ def main():
         )
     )
 
-    total_verify_time, count_proofs = verify_proof_batch(
+    total_verify_time, count_proofs = batch_verify_proofs(
         "lora_onnx_params", "proof_artifacts"
     )
 

@@ -3,7 +3,7 @@ import glob
 import json
 import time
 import asyncio
-from typing import NamedTuple
+from typing import NamedTuple, Optional
 
 import numpy as np
 import onnx
@@ -19,7 +19,7 @@ class ProofPaths(NamedTuple):
     witness: str
     proof: str
 
-def resolve_proof_paths(proof_dir: str, base_name: str) -> ProofPaths | None:
+def resolve_proof_paths(proof_dir: str, base_name: str) -> Optional[ProofPaths]:
     """Retrieves paths for all required proof-related files given a directory and base name."""
     return ProofPaths(
         circuit=os.path.join(proof_dir, f"{base_name}.ezkl"),
@@ -78,7 +78,7 @@ async def generate_proofs(
     onnx_dir: str,
     json_dir: str,
     output_dir: str = "."
-) -> tuple[float, float, float, int, int] | None:
+) -> Optional[tuple[float, float, float, int, int]]:
     """Asynchronously scans onnx_dir for .onnx files and json_dir for .json files.
     For each matching pair, runs:
       1) gen_settings + compile_circuit
