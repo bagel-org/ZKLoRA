@@ -30,6 +30,7 @@ def main():
         output_dir="lora_onnx_params",
         json_dir="intermediate_activations",
         submodule_key="attn.c_attn",
+        verbose=True,
     )
 
     csv_path = "proof_metrics.csv"
