@@ -60,14 +60,18 @@ def main():
         total_params,
         count_onnx_files,
     ) = asyncio.run(
-        generate_proofs_async(
+        generate_proofs(
             onnx_dir="lora_onnx_params",
             json_dir="intermediate_activations",
             output_dir="proof_artifacts",
+            verbose=True,
         )
     )
 
-    total_verify_time, count_proofs = verify_proof_batch("proof_artifacts")
+    total_verify_time, count_proofs = batch_verify_proofs(
+        "proof_artifacts",
+        verbose=True,
+    )
 
     if not os.path.exists(csv_path):
         with open(csv_path, "w", newline="") as f:

@@ -10,6 +10,7 @@ import onnx
 import onnxruntime
 import ezkl
 
+
 class ProofPaths(NamedTuple):
     circuit: str
     settings: str
@@ -18,6 +19,7 @@ class ProofPaths(NamedTuple):
     proving_key: str
     witness: str
     proof: str
+
 
 def resolve_proof_paths(proof_dir: str, base_name: str) -> Optional[ProofPaths]:
     """Retrieves paths for all required proof-related files given a directory and base name."""
@@ -28,11 +30,13 @@ def resolve_proof_paths(proof_dir: str, base_name: str) -> Optional[ProofPaths]:
         verification_key=os.path.join(proof_dir, f"{base_name}.vk"),
         proving_key=os.path.join(proof_dir, f"{base_name}.pk"),
         witness=os.path.join(proof_dir, f"{base_name}_witness.json"),
-        proof=os.path.join(proof_dir, f"{base_name}.pf")
+        proof=os.path.join(proof_dir, f"{base_name}.pf"),
     )
 
 
-def batch_verify_proofs(onnx_dir: str, proof_dir: str) -> tuple[float, int]:
+def batch_verify_proofs(
+    proof_dir: str = "proof_artifacts", verbose: bool = False
+) -> tuple[float, int]:
     """Batch verifies proofs for all ONNX models in the specified directory.
 
     Args:
@@ -49,17 +53,19 @@ def batch_verify_proofs(onnx_dir: str, proof_dir: str) -> tuple[float, int]:
 
     total_verify_time = 0.0
 
-    for onnx_path in onnx_files:
-        base_name = os.path.splitext(os.path.basename(onnx_path))[0]
+    for proof_file in proof_files:
+        base_name = os.path.splitext(os.path.basename(proof_file))[0]
         names = resolve_proof_paths(proof_dir, base_name)
         if names is None:
             continue
         # Only unpack the variables we need
         paths = names  # more descriptive variable name
-        
+
         print(f"Verifying proof for {base_name}...")
         start_time = time.time()
-        verify_ok = ezkl.verify(paths.proof, paths.settings, paths.verification_key, paths.srs)
+        verify_ok = ezkl.verify(
+            paths.proof, paths.settings, paths.verification_key, paths.srs
+        )
         end_time = time.time()
 
         duration = end_time - start_time
@@ -79,9 +85,10 @@ def batch_verify_proofs(onnx_dir: str, proof_dir: str) -> tuple[float, int]:
 
 
 async def generate_proofs(
-    onnx_dir: str,
-    json_dir: str,
-    output_dir: str = "."
+    onnx_dir: str = "lora_onnx_params",
+    json_dir: str = "intermediate_activations",
+    output_dir: str = "proof_artifacts",
+    verbose: bool = False,
 ) -> Optional[tuple[float, float, float, int, int]]:
     """Asynchronously scans onnx_dir for .onnx files and json_dir for .json files.
     For each matching pair, runs:
@@ -224,45 +231,10 @@ async def generate_proofs(
         os.remove(pk_file)
         count_onnx_files += 1
 
-    return total_settings_time, total_witness_time, total_prove_time, total_params, count_onnx_files
-
-
-if __name__ == "__main__":
-    """Example top-level usage:
-    1) Flatten submodules as usual
-    2) Call this script via: python generate_proofs_async.py
-    """
-    # Example usage:
-    # from zklora import export_lora_submodules_flattened
-    # from transformers import AutoModelForCausalLM, AutoTokenizer
-    # from peft import PeftModel
-    #
-    # base_model = AutoModelForCausalLM.from_pretrained("distilgpt2")
-    # lora_model = PeftModel.from_pretrained(base_model, "q1e123/peft-starcoder-lora-a100")
-    # lora_model.eval()
-    #
-    # tokenizer = AutoTokenizer.from_pretrained("distilgpt2")
-    # export_lora_submodules_flattened(... "attn.c_attn"...)
-    #
-    # Now run the proofs:
-    # asyncio.run(generate_proofs_async(
-    #     onnx_dir="lora_onnx_params",
-    #     json_dir="intermediate_activations",
-    #     output_dir="proof_artifacts",
-    #     do_verify=True
-    # ))
-
-    import sys
-    import asyncio
-
-    # or parse from sys.argv
-    onnx_dir = "lora_onnx_params"
-    json_dir = "intermediate_activations"
-    out_dir = "proof_artifacts"
-
-    # Run everything in one single event loop
-    asyncio.run(
-        generate_proofs(
-            onnx_dir=onnx_dir, json_dir=json_dir, output_dir=out_dir, do_verify=True
-        )
+    return (
+        total_settings_time,
+        total_witness_time,
+        total_prove_time,
+        total_params,
+        count_onnx_files,
     )
