@@ -46,7 +46,7 @@ def get_filenames(proof_dir: str, base_name: str):
     )
 
 
-def verify_proof_batch(onnx_dir: str, proof_dir: str, verbose: bool = False) -> None:
+def verify_proof_batch(proof_dir: str, verbose: bool = False) -> None:
     """
     Batch verifies proofs for all ONNX models in the specified directory.
 
@@ -57,17 +57,17 @@ def verify_proof_batch(onnx_dir: str, proof_dir: str, verbose: bool = False) -> 
     ## Returns:
         tuple[float, int]: Total time spent verifying proofs, number of proofs verified
     """
-    onnx_files = glob.glob(os.path.join(onnx_dir, "*.onnx"))
-    if not onnx_files:
-        print(f"No ONNX files found in {onnx_dir}.")
+    proof_files = glob.glob(os.path.join(proof_dir, "*.pf"))
+    if not proof_files:
+        print(f"No proof files found in {proof_dir}.")
         return 0.0, 0  # or return None
 
     total_verify_time = 0.0
 
-    print(f"Verifying {len(onnx_files)} proofs...")
+    print(f"Verifying {len(proof_files)} proofs...")
 
-    for onnx_path in onnx_files:
-        base_name = os.path.splitext(os.path.basename(onnx_path))[0]
+    for proof_path in proof_files:
+        base_name = os.path.splitext(os.path.basename(proof_path))[0]
         names = get_filenames(proof_dir, base_name)
         if names is None:
             continue
@@ -99,8 +99,8 @@ def verify_proof_batch(onnx_dir: str, proof_dir: str, verbose: bool = False) -> 
             if verbose:
                 print(f"Verification failed for {base_name}.\n")
 
-    print(f"Total proofs verified: {len(onnx_files)}")
-    return total_verify_time, len(onnx_files)
+    print(f"Total proofs verified: {len(proof_files)}")
+    return total_verify_time, len(proof_files)
 
 
 async def generate_proofs_async(
