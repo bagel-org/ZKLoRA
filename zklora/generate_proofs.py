@@ -51,8 +51,8 @@ def verify_proof_batch(proof_dir: str, verbose: bool = False) -> None:
     Batch verifies proofs for all ONNX models in the specified directory.
 
     ## Args:
-        onnx_dir (str): Directory containing ONNX model files
         proof_dir (str): Directory containing proof artifacts (proofs, verification keys, etc.)
+        verbose (bool): Whether to print verbose output
 
     ## Returns:
         tuple[float, int]: Total time spent verifying proofs, number of proofs verified
