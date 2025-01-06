@@ -103,7 +103,7 @@ def verify_proof_batch(onnx_dir: str, proof_dir: str, verbose: bool = False) -> 
     return total_verify_time, len(onnx_files)
 
 
-async def generate_proofs_async(onnx_dir: str, json_dir: str, output_dir: str = "."):
+async def generate_proofs_async(onnx_dir: str = "lora_onnx_params", json_dir: str = "intermediate_activations", output_dir: str = "proof_artifacts"):
     """
     Asynchronously scans onnx_dir for .onnx files and json_dir for .json files.
     For each matching pair, runs:
