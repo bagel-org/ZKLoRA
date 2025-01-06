@@ -10,9 +10,7 @@ import csv
 
 def main():
     base_model_name = "distilgpt2"
-    #base_model_name = "openai-community/gpt2"
     lora_model_name = "q1e123/peft-starcoder-lora-a100"
-    #lora_model_name = "palsp/gpt2-lora"
     # 1) Load base & LoRA model
     base_model = AutoModelForCausalLM.from_pretrained(base_model_name)
     lora_model = PeftModel.from_pretrained(
