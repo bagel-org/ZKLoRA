@@ -20,9 +20,7 @@ class ProofPaths(NamedTuple):
     proof: str
 
 def resolve_proof_paths(proof_dir: str, base_name: str) -> ProofPaths | None:
-    """
-    Retrieves paths for all required proof-related files given a directory and base name.
-    """
+    """Retrieves paths for all required proof-related files given a directory and base name."""
     return ProofPaths(
         circuit=os.path.join(proof_dir, f"{base_name}.ezkl"),
         settings=os.path.join(proof_dir, f"{base_name}_settings.json"),
@@ -35,12 +33,11 @@ def resolve_proof_paths(proof_dir: str, base_name: str) -> ProofPaths | None:
 
 
 def batch_verify_proofs(onnx_dir: str, proof_dir: str) -> tuple[float, int]:
-    """
-    Batch verifies proofs for all ONNX models in the specified directory.
+    """Batch verifies proofs for all ONNX models in the specified directory.
 
     Args:
-        onnx_dir (str): Directory containing ONNX model files
-        proof_dir (str): Directory containing proof artifacts (proofs, verification keys, etc.)
+        onnx_dir: Directory containing ONNX model files
+        proof_dir: Directory containing proof artifacts (proofs, verification keys, etc.)
 
     Returns:
         tuple[float, int]: Total time spent verifying proofs, number of proofs verified
@@ -82,28 +79,23 @@ async def generate_proofs(
     json_dir: str,
     output_dir: str = "."
 ) -> tuple[float, float, float, int, int] | None:
-    """
-    Asynchronously scans onnx_dir for .onnx files and json_dir for .json files.
+    """Asynchronously scans onnx_dir for .onnx files and json_dir for .json files.
     For each matching pair, runs:
       1) gen_settings + compile_circuit
       2) gen_srs + setup
       3) gen_witness (async)
       4) prove + optional verify
 
-    Since this function is fully async, you can call it once with:
-      asyncio.run(generate_proofs_async(...))
-    without hitting "no running event loop" in a loop.
+    Args:
+        onnx_dir: Directory containing ONNX model files
+        json_dir: Directory containing input JSON files
+        output_dir: Directory to store proof artifacts (default: current directory)
 
-    ## Args:
-        onnx_dir (str): Directory containing ONNX model files
-        json_dir (str): Directory containing input JSON files
-        output_dir (str): Directory to store proof artifacts (default: current directory)
-
-    ## Returns:
-        - total_settings_time (float): Total time spent on settings/setup
-        - total_witness_time (float): Total time spent generating witnesses
-        - total_prove_time (float): Total time spent generating proofs
-        - count_onnx_files (int): Number of ONNX files successfully processed
+    Returns:
+        - total_settings_time: Total time spent on settings/setup
+        - total_witness_time: Total time spent generating witnesses
+        - total_prove_time: Total time spent generating proofs
+        - count_onnx_files: Number of ONNX files successfully processed
     """
 
     os.makedirs(output_dir, exist_ok=True)
@@ -217,8 +209,7 @@ async def generate_proofs(
 
 
 if __name__ == "__main__":
-    """
-    Example top-level usage:
+    """Example top-level usage:
     1) Flatten submodules as usual
     2) Call this script via: python generate_proofs_async.py
     """

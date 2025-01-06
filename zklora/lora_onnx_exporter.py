@@ -10,7 +10,7 @@ from transformers import PreTrainedTokenizer
 
 
 # A helper to fix shapes for A, B
-def fix_lora_shapes(A: torch.Tensor, B: torch.Tensor, x_data: np.ndarray):
+def normalize_lora_matrices(A: torch.Tensor, B: torch.Tensor, x_data: np.ndarray) -> tuple[torch.Tensor, torch.Tensor, int, int, int]:
     """
     x_data shape => (batch, seq_len, hidden_dim).
     We ensure A => [hidden_dim, r], B => [r, out_dim].
@@ -37,7 +37,7 @@ def fix_lora_shapes(A: torch.Tensor, B: torch.Tensor, x_data: np.ndarray):
     return A, B, in_dim, r, out_dim
 
 
-class LoraApplyOneRow(nn.Module):
+class LoraShapeTransformer(nn.Module):
     """
     Expects shape (1, batch*seq_len*hidden_dim).
     Internal forward => reshape to (batch, seq_len, hidden_dim).
@@ -51,7 +51,7 @@ class LoraApplyOneRow(nn.Module):
         self.seq_len = seq_len
         self.hidden_dim = hidden_dim
 
-    def forward(self, x_1d):
+    def forward(self, x_1d: torch.Tensor) -> torch.Tensor:
         # x_1d => shape (1, total_size)
         x_3d = x_1d.view(self.batch_size, self.seq_len, self.hidden_dim)
         out_3d = (x_3d @ self.A) @ self.B
@@ -79,12 +79,13 @@ def export_lora_submodules(
     This function alone does not generate proofs; it only creates the ONNX/JSON pairs.
     You can run your separate proof-generation code (like `generate_proofs_async`) on them.
 
-    :param model:         A LoRA-augmented (PEFT) model, in eval mode.
-    :param tokenizer:     A tokenizer (from the same or compatible base model).
-    :param input_texts:   A list of strings for batched input. e.g. ["Hello", "More text", ...]
-    :param output_dir:    Where to save ONNX files.
-    :param json_dir:      Where to save JSON files.
-    :param submodule_key: If set (e.g. "attn.c_attn"), export only submodules containing that key.
+    Args:
+        model: A LoRA-augmented (PEFT) model, in eval mode.
+        tokenizer: A tokenizer (from the same or compatible base model).
+        input_texts: A list of strings for batched input. e.g. ["Hello", "More text", ...]
+        output_dir: Where to save ONNX files.
+        json_dir: Where to save JSON files.
+        submodule_key: If set (e.g. "attn.c_attn"), export only submodules containing that key.
     """
 
     # Ensure directories exist
@@ -103,7 +104,7 @@ def export_lora_submodules(
     activation_map = {}
     issued_wte_warning = False
 
-    def register_lora_hooks(model):
+    def register_lora_hooks(model) -> None:
         """
         Recursively finds LoRA submodules. If submodule_key is set, only keep those with submodule_key in the name.
         If submodule is 'wte'/'wpe', skip hooking.
@@ -115,9 +116,8 @@ def export_lora_submodules(
                 if "wte" in full_name or "wpe" in full_name:
                     nonlocal issued_wte_warning
                     if not issued_wte_warning:
-                        print(
-                            f"WARNING: Found LoRA submodule '{full_name}' (wte/wpe). Skipping hooking embeddings."
-                        )
+                        print("WARNING: Found LoRA submodule '{full_name}' (wte/wpe). "
+                              "Skipping hooking embeddings.")
                         issued_wte_warning = True
                     continue
 
@@ -127,8 +127,8 @@ def export_lora_submodules(
 
                 print(f"Registering hook on LoRA submodule: {full_name}")
 
-                def make_hook(mod_name):
-                    def hook(mod, layer_inputs, layer_output):
+                def make_hook(mod_name: str) -> callable:
+                    def hook(mod, layer_inputs, layer_output) -> None:
                         if not layer_inputs:
                             return
                         x = layer_inputs[0]  # shape: (batch, seq_len, hidden_dim)
@@ -206,7 +206,7 @@ def export_lora_submodules(
 
         # fix shapes
         try:
-            A_fixed, B_fixed, in_dim, rank, out_dim = fix_lora_shapes(
+            A_fixed, B_fixed, in_dim, rank, out_dim = normalize_lora_matrices(
                 A_raw, B_raw, x_data
             )
         except ValueError as e:
@@ -214,7 +214,7 @@ def export_lora_submodules(
             continue
 
         # Build sub-module expecting => (1, total_size)
-        lora_mod = LoraApplyOneRow(
+        lora_mod = LoraShapeTransformer(
             A_fixed, B_fixed, batch_size, seq_len, hidden_dim
         ).eval()
 
