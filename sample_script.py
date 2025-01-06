@@ -1,4 +1,4 @@
-from zklora import export_lora_submodules, generate_proofs_async, verify_proof_batch
+from zklora import export_lora_submodules, generate_proofs, batch_verify_proofs
 
 import asyncio
 from transformers import AutoModelForCausalLM, AutoTokenizer

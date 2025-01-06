@@ -1,58 +1,43 @@
 import os
 import glob
-import onnx
-import ezkl
-import time
-import numpy as np
 import json
+import time
+import asyncio
+from typing import NamedTuple, Optional
+
+import numpy as np
+import onnx
 import onnxruntime
+import ezkl
 
+class ProofPaths(NamedTuple):
+    circuit: str
+    settings: str
+    srs: str
+    verification_key: str
+    proving_key: str
+    witness: str
+    proof: str
 
-def get_filenames(proof_dir: str, base_name: str):
-    """
-    Retrieves paths for all required proof-related files given a directory and base name.
-
-    ## Args:
-        proof_dir (str): Directory containing the proof artifacts
-        base_name (str): Base name of the files (without extension)
-
-    ## Returns:
-        tuple | None: A 7-tuple containing paths to:
-            - circuit file (.ezkl)
-            - settings file (_settings.json)
-            - SRS file (kzg.srs)
-            - verification key file (.vk)
-            - proving key file (.pk)
-            - witness file (_witness.json)
-            - proof file (.pf)
-            Returns None if any required file is missing.
-    """
-    circuit_name = os.path.join(proof_dir, f"{base_name}.ezkl")
-    settings_file = os.path.join(proof_dir, f"{base_name}_settings.json")
-    srs_file = os.path.join(proof_dir, "kzg.srs")
-    vk_file = os.path.join(proof_dir, f"{base_name}.vk")
-    pk_file = os.path.join(proof_dir, f"{base_name}.pk")
-    witness_file = os.path.join(proof_dir, f"{base_name}_witness.json")
-    proof_file = os.path.join(proof_dir, f"{base_name}.pf")
-
-    return (
-        circuit_name,
-        settings_file,
-        srs_file,
-        vk_file,
-        pk_file,
-        witness_file,
-        proof_file,
+def resolve_proof_paths(proof_dir: str, base_name: str) -> Optional[ProofPaths]:
+    """Retrieves paths for all required proof-related files given a directory and base name."""
+    return ProofPaths(
+        circuit=os.path.join(proof_dir, f"{base_name}.ezkl"),
+        settings=os.path.join(proof_dir, f"{base_name}_settings.json"),
+        srs=os.path.join(proof_dir, "kzg.srs"),
+        verification_key=os.path.join(proof_dir, f"{base_name}.vk"),
+        proving_key=os.path.join(proof_dir, f"{base_name}.pk"),
+        witness=os.path.join(proof_dir, f"{base_name}_witness.json"),
+        proof=os.path.join(proof_dir, f"{base_name}.pf")
     )
 
 
-def verify_proof_batch(proof_dir: str, verbose: bool = False) -> None:
-    """
-    Batch verifies proofs for all ONNX models in the specified directory.
+def batch_verify_proofs(onnx_dir: str, proof_dir: str) -> tuple[float, int]:
+    """Batch verifies proofs for all ONNX models in the specified directory.
 
-    ## Args:
-        proof_dir (str): Directory containing proof artifacts (proofs, verification keys, etc.)
-        verbose (bool): Whether to print verbose output
+    Args:
+        onnx_dir: Directory containing ONNX model files
+        proof_dir: Directory containing proof artifacts (proofs, verification keys, etc.)
 
     ## Returns:
         tuple[float, int]: Total time spent verifying proofs, number of proofs verified
@@ -64,27 +49,17 @@ def verify_proof_batch(proof_dir: str, verbose: bool = False) -> None:
 
     total_verify_time = 0.0
 
-    print(f"Verifying {len(proof_files)} proofs...")
-
-    for proof_path in proof_files:
-        base_name = os.path.splitext(os.path.basename(proof_path))[0]
-        names = get_filenames(proof_dir, base_name)
+    for onnx_path in onnx_files:
+        base_name = os.path.splitext(os.path.basename(onnx_path))[0]
+        names = resolve_proof_paths(proof_dir, base_name)
         if names is None:
             continue
-        (
-            circuit_name,
-            settings_file,
-            srs_file,
-            vk_file,
-            pk_file,
-            witness_file,
-            proof_file,
-        ) = names
-
-        if verbose:
-            print(f"Verifying proof for {base_name}...")
+        # Only unpack the variables we need
+        paths = names  # more descriptive variable name
+        
+        print(f"Verifying proof for {base_name}...")
         start_time = time.time()
-        verify_ok = ezkl.verify(proof_file, settings_file, vk_file, srs_file)
+        verify_ok = ezkl.verify(paths.proof, paths.settings, paths.verification_key, paths.srs)
         end_time = time.time()
 
         duration = end_time - start_time
@@ -103,34 +78,28 @@ def verify_proof_batch(proof_dir: str, verbose: bool = False) -> None:
     return total_verify_time, len(proof_files)
 
 
-async def generate_proofs_async(
-    onnx_dir: str = "lora_onnx_params",
-    json_dir: str = "intermediate_activations",
-    output_dir: str = "proof_artifacts",
-    verbose: bool = False,
-):
-    """
-    Asynchronously scans onnx_dir for .onnx files and json_dir for .json files.
+async def generate_proofs(
+    onnx_dir: str,
+    json_dir: str,
+    output_dir: str = "."
+) -> Optional[tuple[float, float, float, int, int]]:
+    """Asynchronously scans onnx_dir for .onnx files and json_dir for .json files.
     For each matching pair, runs:
     1) gen_settings + compile_circuit
     2) gen_srs + setup
     3) gen_witness (async)
     4) prove
 
-    Since this function is fully async, you can call it once with:
-      `asyncio.run(generate_proofs_async(...))`
-    without hitting "no running event loop" in a loop.
+    Args:
+        onnx_dir: Directory containing ONNX model files
+        json_dir: Directory containing input JSON files
+        output_dir: Directory to store proof artifacts (default: current directory)
 
-    ## Args:
-        onnx_dir (str): Directory containing ONNX model files
-        json_dir (str): Directory containing input JSON files
-        output_dir (str): Directory to store proof artifacts (default: current directory)
-        verbose (bool): Whether to print verbose output
-    ## Returns:
-        - total_settings_time (float): Total time spent on settings/setup
-        - total_witness_time (float): Total time spent generating witnesses
-        - total_prove_time (float): Total time spent generating proofs
-        - count_onnx_files (int): Number of ONNX files successfully processed
+    Returns:
+        - total_settings_time: Total time spent on settings/setup
+        - total_witness_time: Total time spent generating witnesses
+        - total_prove_time: Total time spent generating proofs
+        - count_onnx_files: Number of ONNX files successfully processed
     """
 
     os.makedirs(output_dir, exist_ok=True)
@@ -167,7 +136,7 @@ async def generate_proofs_async(
             print(f"Number of parameters: {param_count:,}")
         total_params += param_count
 
-        names = get_filenames(output_dir, base_name)
+        names = resolve_proof_paths(output_dir, base_name)
         if names is None:
             continue
         (
@@ -255,11 +224,45 @@ async def generate_proofs_async(
         os.remove(pk_file)
         count_onnx_files += 1
 
-    print("Proof generation complete.")
-    return (
-        total_settings_time,
-        total_witness_time,
-        total_prove_time,
-        total_params,
-        count_onnx_files,
+    return total_settings_time, total_witness_time, total_prove_time, total_params, count_onnx_files
+
+
+if __name__ == "__main__":
+    """Example top-level usage:
+    1) Flatten submodules as usual
+    2) Call this script via: python generate_proofs_async.py
+    """
+    # Example usage:
+    # from zklora import export_lora_submodules_flattened
+    # from transformers import AutoModelForCausalLM, AutoTokenizer
+    # from peft import PeftModel
+    #
+    # base_model = AutoModelForCausalLM.from_pretrained("distilgpt2")
+    # lora_model = PeftModel.from_pretrained(base_model, "q1e123/peft-starcoder-lora-a100")
+    # lora_model.eval()
+    #
+    # tokenizer = AutoTokenizer.from_pretrained("distilgpt2")
+    # export_lora_submodules_flattened(... "attn.c_attn"...)
+    #
+    # Now run the proofs:
+    # asyncio.run(generate_proofs_async(
+    #     onnx_dir="lora_onnx_params",
+    #     json_dir="intermediate_activations",
+    #     output_dir="proof_artifacts",
+    #     do_verify=True
+    # ))
+
+    import sys
+    import asyncio
+
+    # or parse from sys.argv
+    onnx_dir = "lora_onnx_params"
+    json_dir = "intermediate_activations"
+    out_dir = "proof_artifacts"
+
+    # Run everything in one single event loop
+    asyncio.run(
+        generate_proofs(
+            onnx_dir=onnx_dir, json_dir=json_dir, output_dir=out_dir, do_verify=True
+        )
     )
