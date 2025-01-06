@@ -135,6 +135,7 @@ def export_lora_submodules(
         output_dir: Where to save ONNX files.
         json_dir: Where to save JSON files.
         submodule_key: If set (e.g. "attn.c_attn"), export only submodules containing that key.
+        verbose: If True, print debug info.
     """
 
     # Ensure directories exist
@@ -159,7 +160,8 @@ def export_lora_submodules(
     inputs = tokenizer(input_texts, return_tensors="pt", padding=True, truncation=True)
     input_ids = inputs["input_ids"]
     # e.g. shape: (batch, seq_len)
-    print("input_ids shape:", input_ids.shape)
+    if verbose:
+        print("input_ids shape:", input_ids.shape)
 
     # Run forward pass
     with torch.no_grad():
