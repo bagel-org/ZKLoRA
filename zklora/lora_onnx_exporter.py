@@ -70,7 +70,7 @@ def make_activation_hook(mod_name: str, activation_map: dict) -> callable:
         if not layer_inputs:
             return
         x = layer_inputs[0]  # shape: (batch, seq_len, hidden_dim)
-        activation_map[mod_name] = x.detach().cpu().numpy()
+        activation_map[mod_name] = x.detach().cpu().float().numpy()
 
     return hook
 
