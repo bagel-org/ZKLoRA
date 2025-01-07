@@ -10,7 +10,9 @@ from transformers import PreTrainedTokenizer
 
 
 # A helper to fix shapes for A, B
-def normalize_lora_matrices(A: torch.Tensor, B: torch.Tensor, x_data: np.ndarray) -> tuple[torch.Tensor, torch.Tensor, int, int, int]:
+def normalize_lora_matrices(
+    A: torch.Tensor, B: torch.Tensor, x_data: np.ndarray
+) -> tuple[torch.Tensor, torch.Tensor, int, int, int]:
     """
     x_data shape => (batch, seq_len, hidden_dim).
     We ensure A => [hidden_dim, r], B => [r, out_dim].
@@ -61,6 +63,52 @@ class LoraShapeTransformer(nn.Module):
         return out_2d
 
 
+def make_activation_hook(mod_name: str, activation_map: dict) -> callable:
+    """Creates a hook function for capturing LoRA submodule activations."""
+
+    def hook(mod, layer_inputs, layer_output) -> None:
+        if not layer_inputs:
+            return
+        x = layer_inputs[0]  # shape: (batch, seq_len, hidden_dim)
+        activation_map[mod_name] = x.detach().cpu().numpy()
+
+    return hook
+
+
+def register_lora_hooks(
+    model: PeftModel, activation_map: dict, submodule_key: str = None
+) -> None:
+    """
+    Recursively finds LoRA submodules and registers forward hooks.
+    Args:
+        model: The PEFT model to hook
+        activation_map: Dictionary to store activations
+        submodule_key: If set, only hook submodules containing this key
+    """
+    issued_wte_warning = False
+
+    for full_name, module in model.named_modules():
+        # Check if this submodule has LoRA
+        if hasattr(module, "lora_A") and hasattr(module, "lora_B"):
+            # Skip embedding submodules
+            if "wte" in full_name or "wpe" in full_name:
+                if not issued_wte_warning:
+                    print(
+                        "WARNING: Found LoRA submodule '{full_name}' (wte/wpe). "
+                        "Skipping hooking embeddings."
+                    )
+                    issued_wte_warning = True
+                continue
+
+            # If user wants to filter e.g. "attn.c_attn"
+            if submodule_key and submodule_key not in full_name:
+                continue
+
+            module.register_forward_hook(
+                make_activation_hook(full_name, activation_map)
+            )
+
+
 def export_lora_submodules(
     model: PeftModel,
     tokenizer: PreTrainedTokenizer,
@@ -68,6 +116,7 @@ def export_lora_submodules(
     output_dir: str = "lora_onnx_params",
     json_dir: str = "intermediate_activations",
     submodule_key: str = None,
+    verbose: bool = False,
 ) -> None:
     """
     1) Captures LoRA sub-layer inputs with shape (batch, seq_len, hidden_dim).
@@ -86,6 +135,7 @@ def export_lora_submodules(
         output_dir: Where to save ONNX files.
         json_dir: Where to save JSON files.
         submodule_key: If set (e.g. "attn.c_attn"), export only submodules containing that key.
+        verbose: If True, print debug info.
     """
 
     # Ensure directories exist
@@ -102,50 +152,16 @@ def export_lora_submodules(
 
     # We'll store each sub-layer input in a dict
     activation_map = {}
-    issued_wte_warning = False
 
-    def register_lora_hooks(model) -> None:
-        """
-        Recursively finds LoRA submodules. If submodule_key is set, only keep those with submodule_key in the name.
-        If submodule is 'wte'/'wpe', skip hooking.
-        """
-        for full_name, module in model.named_modules():
-            # Check if this submodule has LoRA
-            if hasattr(module, "lora_A") and hasattr(module, "lora_B"):
-                # Skip embedding submodules
-                if "wte" in full_name or "wpe" in full_name:
-                    nonlocal issued_wte_warning
-                    if not issued_wte_warning:
-                        print("WARNING: Found LoRA submodule '{full_name}' (wte/wpe). "
-                              "Skipping hooking embeddings.")
-                        issued_wte_warning = True
-                    continue
-
-                # If user wants to filter e.g. "attn.c_attn"
-                if submodule_key and submodule_key not in full_name:
-                    continue
-
-                print(f"Registering hook on LoRA submodule: {full_name}")
-
-                def make_hook(mod_name: str) -> callable:
-                    def hook(mod, layer_inputs, layer_output) -> None:
-                        if not layer_inputs:
-                            return
-                        x = layer_inputs[0]  # shape: (batch, seq_len, hidden_dim)
-                        print(f"shape in hook ({mod_name}):", x.size())
-                        activation_map[mod_name] = x.detach().cpu().numpy()
-
-                    return hook
-
-                module.register_forward_hook(make_hook(full_name))
-
-    register_lora_hooks(model)
+    # Register hooks before forward pass
+    register_lora_hooks(model, activation_map, submodule_key)
 
     # Tokenize the input text as a single batch
     inputs = tokenizer(input_texts, return_tensors="pt", padding=True, truncation=True)
     input_ids = inputs["input_ids"]
     # e.g. shape: (batch, seq_len)
-    print("input_ids shape:", input_ids.shape)
+    if verbose:
+        print("input_ids shape:", input_ids.shape)
 
     # Run forward pass
     with torch.no_grad():
@@ -249,42 +265,6 @@ def export_lora_submodules(
         with open(json_path, "w") as f:
             json.dump(data_json, f)
 
-        print(f"Exported ONNX for {full_name} -> {onnx_path}")
-        print(f"Saved JSON -> {json_path}, shape => {one_row.shape}")
-
-
-###########################################################
-# Example usage in another script:
-#
-# from zklora_one_row import export_lora_submodules_one_row
-# from generate_proofs_async import generate_proofs_async   # your proof function
-# import asyncio
-#
-# base_model = AutoModelForCausalLM.from_pretrained("distilgpt2")
-# lora_model = PeftModel.from_pretrained(base_model, "some-lora-adapter")
-# lora_model.eval()
-# tokenizer = AutoTokenizer.from_pretrained("distilgpt2")
-#
-# texts = [
-#     "Hello from LoRA",
-#     "Another line of text for multi-batch",
-#     "One more line"
-# ]
-#
-# export_lora_submodules_one_row(
-#     model=lora_model,
-#     tokenizer=tokenizer,
-#     input_texts=texts,
-#     output_dir="lora_onnx_params",
-#     json_dir="intermediate_activations",
-#     submodule_key="attn.c_attn"  # or None to export all LoRA submodules
-# )
-#
-# # Then run proof generation:
-# # asyncio.run(generate_proofs_async(
-# #     onnx_dir="lora_onnx_params",
-# #     json_dir="intermediate_activations",
-# #     output_dir="proof_artifacts"
-# # ))
-#
-###########################################################
+        if verbose:
+            print(f"Exported ONNX for {full_name} -> {onnx_path}")
+            print(f"Saved JSON -> {json_path}, shape => {one_row.shape}")
