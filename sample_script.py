@@ -8,8 +8,8 @@ import os
 import csv
 
 
-base_model_name = "meta-llama/Llama-3.1-8B-Instruct"
-lora_model_name = "vtriple/Llama-3.1-8B-yara"
+base_model_name = "mistralai/Mixtral-8x7B-Instruct-v0.1"
+lora_model_name = "ruslanmv/Medical-Mixtral-7B-v1.5k"
 base_model = AutoModelForCausalLM.from_pretrained(base_model_name)
 lora_model = PeftModel.from_pretrained(base_model, lora_model_name)
 lora_model.eval()
