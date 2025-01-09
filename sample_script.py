@@ -8,8 +8,8 @@ import os
 import csv
 
 
-base_model_name = "meta-llama/Llama-3.2-1B"
-lora_model_name = "Chryslerx10/Llama-3.2-1B-finetuned-generalQA-peft-4bit"
+base_model_name = "mistralai/Mixtral-8x7B-Instruct-v0.1"
+lora_model_name = "ruslanmv/Medical-Mixtral-7B-v1.5k"
 base_model = AutoModelForCausalLM.from_pretrained(base_model_name)
 lora_model = PeftModel.from_pretrained(base_model, lora_model_name)
 lora_model.eval()
@@ -26,6 +26,7 @@ export_lora_submodules(
     tokenizer=tokenizer,
     input_texts=texts,  # pass list of strings
     verbose=True,
+    submodule_key="k_proj",
 )
 
 csv_path = "proof_metrics.csv"
