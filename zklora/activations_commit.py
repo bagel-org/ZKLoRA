@@ -1,4 +1,8 @@
-import merkle
+try:
+    import merkle
+except ImportError:
+    raise ImportError("Failed to import merkle. Please run: maturin develop --manifest-path libs/merkle/Cargo.toml")
+
 import json
 import numpy as np
 
