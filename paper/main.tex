@@ -1,5 +1,10 @@
 \documentclass{article}
 
+\usepackage{amsmath,amsgen,latexsym}
+\usepackage{amstext,amssymb,amsfonts}
+
+\usepackage{hyperref}
+
 \begin{document}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -24,9 +29,14 @@ Among the different techniques for parameter-efficient fine-tuning of LLMs, one 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{ZKML}
+\subsection{Incrementally Verifiable Computation}
+In a decentralized world, trust is a resource that is hard to achieve. In decentralized computation, we need to make sure the computation are being done, and are being correctly. In a seminal paper by Valiant (2008) \cite{valiant2008incrementally}, it was shown that proofs of knowledge can be used to assert the correct execution of general computations. That is, if $M$ is a machine that runs for $t$ steps producing a sequence of configurations $c_0,c_1,\dots,c_t$, then there exist an efficient and effective way to produce a computationally sound proof for the computation $c_0  \xrightarrow{t} c_t$. This idea is referred to as Incrementally Verifiable Computation or IVC.
 
+The main goal is IVC is to produce compact, updatable proofs of correctness for a sequence of computations, so that each new step in the computation can be verified on its own while building on the guarantees of the previous steps. This technique significantly reduces the verification overhead for long or evolving computations, which is invaluable in scenarios like decentralized networks, outsourced computation, and any application requiring frequent correctness checks.
 
+Kumar et al. (2021) \cite{kothapalli2022nova} introduced the proof system NOVA and the idea of recursive proofs, which are proofs that can ``prove the correctness of other proofs.'' Recursive proof composition is key to IVC where each proof attests to the correctness of both a step’s output and the validity of the previous step’s proof.
+
+HyperNova \cite{kothapalli2024hypernova} is a novel recursive argument system optimized for customizable constraint systems (CCS) that generalizes and improves upon prior approaches like Nova. It achieves efficiency through a folding scheme where the prover’s cryptographic costs are minimized and achieves zero-knowledge without relying on zkSNARKs.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
