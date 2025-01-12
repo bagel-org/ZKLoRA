@@ -33,52 +33,80 @@ colors = {
 # Sort the model names by ascending number of LoRA params
 model_names_sorted = sorted(data.keys(), key=lambda m: data[m]['params'])
 
-def plot_graph(x_key, y_key, title, xlabel, ylabel, output_file):
-    plt.figure(figsize=(6,4), dpi=100)
-    plt.title(title)
+def plot_graph(
+    x_key: str,
+    y_key: str,
+    title: str,
+    xlabel: str,
+    ylabel: str,
+    output_file: str
+):
+    """Creates a dotted line graph comparing (LoRA params in millions) to
+    some measured time metric, and saves as PDF."""
+    
+    plt.figure(figsize=(6,4), dpi=120)
+    plt.title(title, fontsize=12, fontweight='bold')
 
     # We'll store the sorted x and y values in separate lists
     x_vals = []
     y_vals = []
 
-    # Populate lists using sorted model names
+    # Collect data in sorted order
     for name in model_names_sorted:
-        # Convert param count to millions
         params_millions = data[name][x_key] / 1e6
         x_vals.append(params_millions)
         y_vals.append(data[name][y_key])
 
-    # Plot each model as a distinct color dot
-    for i, name in enumerate(model_names_sorted):
-        model_x = data[name][x_key] / 1e6  # convert to millions
-        model_y = data[name][y_key]
-        plt.plot(model_x, model_y, marker='o', color=colors[name], label=name)
+    # Plot each model as a distinct color dot (larger markers, edges)
+    for name in model_names_sorted:
+        mx = data[name][x_key] / 1e6   # convert to millions
+        my = data[name][y_key]
+        plt.plot(
+            mx, my,
+            marker='o',
+            markersize=8,
+            markeredgecolor='black',
+            markeredgewidth=0.8,
+            color=colors[name],
+            linestyle='None',
+            label=name  # We'll create a manual legend below
+        )
 
-    # Connect the points with a faint dotted line in sorted order
-    plt.plot(x_vals, y_vals, 'k:', alpha=0.4)
+    # Connect points with a faint dotted line to show progression
+    # We'll use a thick line and partial transparency for a "nicer" look
+    plt.plot(
+        x_vals, y_vals,
+        'k:',   # dotted line in black
+        alpha=0.6,
+        linewidth=2
+    )
 
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
+    plt.xlabel(xlabel, fontsize=10)
+    plt.ylabel(ylabel, fontsize=10)
 
-    # Create a custom legend
+    # Create a manual legend with model-specific colors
     legend_handles = []
     for name in model_names_sorted:
-        patch_color = colors[name]
         legend_handles.append(
-            plt.Line2D([0], [0],
-                       marker='o', color=patch_color, label=name,
-                       markerfacecolor=patch_color, markersize=6,
-                       linestyle='None')
+            plt.Line2D(
+                [0], [0],
+                marker='o',
+                markeredgecolor='black',
+                markeredgewidth=0.8,
+                markerfacecolor=colors[name],
+                markersize=6,
+                linestyle='None',
+                label=name
+            )
         )
-    plt.legend(handles=legend_handles, loc='best')
+    plt.legend(handles=legend_handles, loc='best', fontsize=9)
 
     plt.tight_layout()
     plt.savefig(output_file)
     plt.close()
     print(f"Saved figure: {output_file}")
 
-
-# 1) Total LoRA Params (Millions) vs. Total Settings Time
+# 1) Plot total LoRA Params (Millions) vs. Total Settings Time
 plot_graph(
     x_key='params',
     y_key='settings',
@@ -88,17 +116,17 @@ plot_graph(
     output_file='figs/fig_settings.pdf'
 )
 
-# 2) Total LoRA Params (Millions) vs. Total Proof Generation Time
+# 2) Plot total LoRA Params (Millions) vs. Total Proof Generation Time
 plot_graph(
     x_key='params',
     y_key='proof',
-    title='Total LoRA Params vs. Total Proof Time',
+    title='Total LoRA Params vs. Total Proof Generation Time',
     xlabel='Total LoRA Params (Millions)',
-    ylabel='Total Proof Generation Time (sec)',
+    ylabel='Total Proof Time (sec)',
     output_file='figs/fig_proof.pdf'
 )
 
-# 3) Total LoRA Params (Millions) vs. Total Verification Time
+# 3) Plot total LoRA Params (Millions) vs. Total Verification Time
 plot_graph(
     x_key='params',
     y_key='verify',
