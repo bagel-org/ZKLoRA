@@ -44,8 +44,8 @@ def plot_graph(
     """Creates a dotted line graph comparing (LoRA params in millions) to
     some measured time metric, and saves as PDF."""
     
-    plt.figure(figsize=(6,4), dpi=120)
-    plt.title(title, fontsize=12, fontweight='bold')
+    plt.figure(figsize=(10, 6), dpi=120)
+    plt.title(title, fontsize=16, fontweight='bold', color='darkorange')
 
     # We'll store the sorted x and y values in separate lists
     x_vals = []
@@ -64,25 +64,25 @@ def plot_graph(
         plt.plot(
             mx, my,
             marker='o',
-            markersize=8,
+            markersize=12,
             markeredgecolor='black',
-            markeredgewidth=0.8,
+            markeredgewidth=1.5,
             color=colors[name],
             linestyle='None',
             label=name  # We'll create a manual legend below
         )
 
     # Connect points with a faint dotted line to show progression
-    # We'll use a thick line and partial transparency for a "nicer" look
     plt.plot(
         x_vals, y_vals,
-        'k:',   # dotted line in black
-        alpha=0.6,
-        linewidth=2
+        color='darkorange',
+        linestyle='--',
+        alpha=0.8,
+        linewidth=2.5
     )
 
-    plt.xlabel(xlabel, fontsize=10)
-    plt.ylabel(ylabel, fontsize=10)
+    plt.xlabel(xlabel, fontsize=14, color='darkorange')
+    plt.ylabel(ylabel, fontsize=14, color='darkorange')
 
     # Create a manual legend with model-specific colors
     legend_handles = []
@@ -92,15 +92,16 @@ def plot_graph(
                 [0], [0],
                 marker='o',
                 markeredgecolor='black',
-                markeredgewidth=0.8,
+                markeredgewidth=1.5,
                 markerfacecolor=colors[name],
-                markersize=6,
+                markersize=10,
                 linestyle='None',
                 label=name
             )
         )
-    plt.legend(handles=legend_handles, loc='best', fontsize=9)
+    plt.legend(handles=legend_handles, loc='best', fontsize=12, frameon=False)
 
+    plt.grid(True, linestyle='--', alpha=0.5)
     plt.tight_layout()
     plt.savefig(output_file)
     plt.close()
