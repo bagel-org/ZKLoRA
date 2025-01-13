@@ -25,10 +25,9 @@
 \footnotetext[1]{Bagel is a research lab, making open source AI monetizable.}
 
 \begin{abstract}
-Verifying that a private Low-Rank Adaptation (LoRA) module is truly compatible with a given large language model (LLM) can be daunting, especially when those LoRA parameters cannot be disclosed. 
-We introduce \texttt{ZKLoRA}, a library for generating zero-knowledge proofs that demonstrate correct LoRA-base model compatibility \emph{without sharing LoRA weights}. 
-A key insight is that the \emph{verification step} for each LoRA module remains on the order of \textbf{1--2 seconds}, enabling repeated or batch checking at scale. 
-Our empirical evaluations confirm that \texttt{ZKLoRA} maintains this rapid per-module verification time even for multi-billion-parameter LLMs.
+    Parameter-efficient fine-tuning (PEFT) techniques, including Low-Rank Adaptation (LoRA), are widely adopted to customize large-scale language models in distributed training environments. A base model owner may outsource LoRA development to an external contributor, creating two requirements: the owner must verify that the LoRA update stems from the designated open-source model, and the contributor must protect proprietary parameters until compensation is assured.
+    
+    We propose \textbf{ZKLoRA}, a zero-knowledge protocol that leverages polynomial commitments, succinct proofs, and advanced cryptographic designs to confirm LoRA–base model compatibility \emph{without} disclosing private LoRA weights. Our evaluations show that verification requires only \textbf{1--2 seconds} per LoRA module for typical large models. This short verification time enables trust-driven collaboration across decentralized infrastructures and contract-based training pipelines, ensuring that the delivered LoRA is valid while preserving the contributor’s intellectual property.
 \end{abstract}
 
 %------------------------------------------
