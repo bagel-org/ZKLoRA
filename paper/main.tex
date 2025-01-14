@@ -45,36 +45,42 @@ This rapid, per-module check allows the Base Model User to efficiently, independ
 %------------------------------------------
 \section{Preliminary Results}
 
-We benchmarked \texttt{ZKLoRA} across several LLMs and smaller models with varying LoRA parameter counts. Our focus is verifying that, regardless of total parameter scale, \emph{the per-module verification step} remains swift. 
-Figures~\ref{fig:verify}, \ref{fig:settings}, and \ref{fig:proof} illustrate how total LoRA parameters correlate with:
+We benchmarked \texttt{ZKLoRA} across several LLMs and smaller models with different numbers of LoRA modules. 
+Our central question is how \emph{total} verification, proof generation, and settings times grow with \textbf{the number of LoRA modules} (\#LoRA), while also considering each LoRA's average parameter size. 
+Figures~\ref{fig:verify_vs_numlora}, \ref{fig:proof_vs_numlora}, and \ref{fig:settings_vs_numlora} visualize this trade-off:
 \begin{itemize}
-    \item \textbf{Verification Time per Module} (Base Model User’s overhead),
-    \item \textbf{Total Settings Time} (preparatory steps and key generation),
-    \item \textbf{Total Proof Generation Time} (LoRA Owner’s overhead).
+    \item The x-axis is \textbf{the number of LoRA modules} for each model setup,
+    \item The y-axis is one of: \textit{total verification time}, \textit{total proof generation time}, or \textit{total settings time},
+    \item \textbf{Marker size} is proportional to the average LoRA size (in parameters).
+    \item The legend indicates each model’s average LoRA size with a label \textit{“Avg LoRA Size=xxK”}.
 \end{itemize}
 
 \begin{figure}[ht]
     \centering
-    \includegraphics[width=0.58\linewidth]{figs/fig_verify.pdf}
-    \caption{LoRA params (millions) vs. Total verification. Even at higher scales, verifying each LoRA module remains about 1--2 seconds. For example, even for a 70-billion parameter model, the total verification time of the additional LoRA parameters is only ~2 minutes.}
-    \label{fig:verify}
+    \includegraphics[width=0.65\linewidth]{figs/fig_verify_vs_numlora.pdf}
+    \caption{Total verification time (seconds) vs. number of LoRA modules, with dot size reflecting average LoRA size.}
+    \label{fig:verify_vs_numlora}
 \end{figure}
 
 \begin{figure}[ht]
     \centering
-    \includegraphics[width=0.58\linewidth]{figs/fig_settings.pdf}
-    \caption{LoRA params (millions) vs. total settings time. Each point corresponds to a different LLM or smaller model.}
-    \label{fig:settings}
+    \includegraphics[width=0.65\linewidth]{figs/fig_proof_vs_numlora.pdf}
+    \caption{Total proof generation time (seconds) vs. number of LoRA modules, with dot size reflecting average LoRA size.}
+    \label{fig:proof_vs_numlora}
 \end{figure}
 
 \begin{figure}[ht]
     \centering
-    \includegraphics[width=0.58\linewidth]{figs/fig_proof.pdf}
-    \caption{LoRA params (millions) vs. total proof generation time (LoRA Owner’s overhead).}
-    \label{fig:proof}
+    \includegraphics[width=0.65\linewidth]{figs/fig_settings_vs_numlora.pdf}
+    \caption{Total settings time (seconds) vs. number of LoRA modules, with dot size reflecting average LoRA size.}
+    \label{fig:settings_vs_numlora}
 \end{figure}
 
-Although proof generation may scale with parameter size, verification for each LoRA module is consistently on the order of seconds. We consider this \emph{fast, per-module verification} to be \texttt{ZKLoRA}’s core advantage in production LLM environments.
+From Figure~\ref{fig:verify_vs_numlora}, we see that models with a higher LoRA count (e.g., 80 modules for a large 70B model) can indeed lead to larger total verification time overall. However, the slope remains modest due to \texttt{ZKLoRA}’s succinct design. For instance, even if each module is verified individually at around 1--2 seconds, verifying 80 modules can be done in just a few minutes, which is still practical for real-world usage.
+
+Figures~\ref{fig:proof_vs_numlora} and \ref{fig:settings_vs_numlora} similarly show that \emph{proof generation} and \emph{settings time} scale with the number of LoRA modules, but also depend heavily on each module’s average size (indicated by larger or smaller dot size). These two steps (proof generation on the LoRA Owner’s side and cryptographic circuit setup) can become more expensive, yet remain feasible in decentralized settings or paid contract relationships. The \emph{Base Model User}, meanwhile, benefits from the relatively short verification overhead.
+
+Overall, these plots confirm that \texttt{ZKLoRA} can handle multiple LoRA modules with minimal overhead for verifying correctness, emphasizing the viability of repeated or multi-adapter scenarios in large-scale LLM pipelines.
 
 %------------------------------------------
 % 2. Ensuring LoRA–Base Model Compatibility with ZKLoRA
@@ -112,8 +118,9 @@ However, these two parties must confirm the LoRA truly “fits” the base model
       draw,
       rounded corners,
       align=center,
-      minimum width=1.8cm,
-      minimum height=0.9cm
+      minimum width=1.65cm,  % Decreased from 1.8cm to 1.65cm
+      minimum height=0.9cm,
+      fill=gray!10  % Light gray background for regular blocks
     },
     dashedblock/.style={
       draw,
@@ -121,55 +128,32 @@ However, these two parties must confirm the LoRA truly “fits” the base model
       rounded corners,
       align=center,
       font=\footnotesize,
-      fill=white,
-      minimum width=1.8cm,
+      fill=orange!10,  % Light orange background for LoRA block
+      minimum width=1.65cm,  % Decreased to match other blocks
       minimum height=0.9cm
     },
     arrow/.style={->, thick},
-    node distance=2.0cm
+    node distance=1.65cm  % Decreased from 1.8cm to 1.65cm
 ]
-
-% Base Model User components
-\node[block, label=above:\textbf{Input}] (input) {$\mathbf{x}$};
-\node[block, right=2.0cm of input] (W1) {$\mathbf{W}_1$};
-\node[block, right=2.0cm of W1] (act) {ReLU};
-\node[block, right=2.0cm of act] (W2) {$\mathbf{W}_2$};
-\node[block, label=above:\textbf{Output}, right=2.0cm of W2] (output) {$\mathbf{y}$};
-
-% LoRA Owner components
-\node[dashedblock, above=1.6cm of W1, label=above:\textbf{LoRA Owner}] (LoRA) {LoRA for Layer 1};
-\node[dashedblock, above=1.6cm of act] (proofGen) {Proof Generation};
-\node[dashedblock, above=1.6cm of W2] (zkProof) {Zero-Knowledge Proof};
-
-% Arrows for Base Model User
-\draw[->] (input) -- node[above, font=\scriptsize]{local multiply} (W1);
-\draw[->] (W1) -- node[above, font=\scriptsize]{$\mathbf{z}'$} (act);
-\draw[->] (act) -- node[above, font=\scriptsize]{hidden} (W2);
-\draw[->] (W2) -- (output);
-
-% Arrows for LoRA Owner
-\draw[->, dashed] (W1.north) to[bend left=15] node[left, font=\scriptsize]{partial acts} (LoRA.south);
-\draw[->, dashed] (LoRA.south) to[bend left=15] node[right, font=\scriptsize]{updated $\mathbf{z}'$} (W1.north);
-\draw[->, dashed] (LoRA) -- (proofGen);
-\draw[->, dashed] (proofGen) -- (zkProof);
-
-% Verification process
-\node[below=0.5cm of W2, font=\footnotesize, align=center] (verify) {Verification\\(1--2 sec)};
-\draw[->, dashed] (zkProof) -- (verify);
-
-% Base Model User boundary
+\node[block, label=above:\textcolor{teal}{\textbf{Input}}] (input) {$\mathbf{x}$};
+\node[block, right=1.65cm of input] (W1) {$\mathbf{W}_1$};
+\node[dashedblock, above=1.6cm of W1, label=above:\textcolor{orange!70!black}{\textbf{LoRA Owner}}] (LoRA) {LoRA for Layer 1};
+\node[block, right=1.65cm of W1] (act) {ReLU};
+\node[block, right=1.65cm of act] (W2) {$\mathbf{W}_2$};
+\node[block, label=above:\textcolor{teal}{\textbf{Output}}, right=1.65cm of W2] (output) {$\mathbf{y}$};
+\draw[->, teal!60!black] (input) -- node[above, font=\scriptsize]{local multiply} (W1);
+\draw[->, dashed, orange!70!black] (W1.north) to[bend left=15] node[left, font=\scriptsize]{partial acts} (LoRA.south);
+\draw[->, dashed, orange!70!black] (LoRA.south) to[bend left=15] node[right, font=\scriptsize]{updated $\mathbf{z}'$} (W1.north);
+\draw[->, teal!60!black] (W1) -- node[above, font=\scriptsize]{$\mathbf{z}'$} (act);
+\draw[->, teal!60!black] (act) -- node[above, font=\scriptsize]{hidden} (W2);
+\draw[->, teal!60!black] (W2) -- (output);
 \node[draw, rounded corners, thick, color=blue!40!black,
       fit=(input)(W1)(act)(W2)(output),
-      label={[font=\small, color=blue!40!black]above:\textbf{Base Model User}},
-      inner sep=0.4cm
+      label={[font=\small, color=blue!40!black, xshift=2cm]above:\textbf{Base Model User}},
+      inner sep=0.6cm
 ] (baseModelFit) {};
-
-% Additional annotations
-\node[above=0.5cm of zkProof, font=\footnotesize, align=center] (zkProofGen) {Zero-Knowledge\\Proof Generation};
-\draw[->, dashed] (zkProof) -- (zkProofGen);
-
 \end{tikzpicture}
-\caption{ZKLoRA inference flow on a 2-layer neural network where the first layer has private LoRA weights added. The LoRA Owner generates a zero-knowledge proof to ensure compatibility, and the Base Model User verifies this proof quickly.}
+\caption{zklora inference flow on a 2-layer neural network where the first layer has private LoRA weights added.}
 \label{fig:toy-mlp-lora}
 \end{figure}
 
@@ -201,21 +185,18 @@ Each LoRA module’s proof is tested with the verification key, taking \textbf{1
 \section{Related Work}
 
 \subsection{Low-Rank Adaptation (LoRA)}
-
 Low-Rank Adaptation (LoRA) \cite{hu2021lora} is a technique for parameter-efficient fine-tuning of large language models (LLMs) that injects small, low-rank adapter matrices into specific layers of a pre-trained model. By isolating the fine-tuning process to these low-rank components, LoRA drastically reduces memory overhead compared to full-model fine-tuning. This design choice is especially appealing for massive LLMs where training or even storing all parameters can be prohibitive \cite{ding2022delta}.
 
+Beyond the clear advantage of reduced storage, LoRA also facilitates swapping multiple domain-specific adapters into a single base model, making it straightforward to maintain separate skill sets without instantiating an entire new copy of the model. These adapters can target specialized tasks (e.g., medical or legal text) with minimal overhead, driving LoRA’s widespread adoption. Yet verifying that a proprietary LoRA truly aligns with a base model (without revealing the adapter) remains problematic—precisely the gap \texttt{ZKLoRA} fills.
 
 \subsection{Incrementally Verifiable Computation}
-In a decentralized world, trust is a resource that is hard to achieve. In decentralized computation, we need to make sure the computation are being done, and are being correctly. In a seminal paper by Valiant (2008) \cite{valiant2008incrementally}, it was shown that proofs of knowledge can be used to assert the correct execution of general computations. That is, if $M$ is a machine that runs for $t$ steps producing a sequence of configurations $c_0,c_1,\dots,c_t$, then there exist an efficient and effective way to produce a computationally sound proof for the computation $c_0  \xrightarrow{t} c_t$. This idea is referred to as Incrementally Verifiable Computation or IVC.
+In a decentralized world, trust is a resource that is hard to achieve. In decentralized computation, we need to make sure the computations are both done and done correctly. In a seminal paper by Valiant (2008) \cite{valiant2008incrementally}, it was shown that proofs of knowledge can be used to assert the correct execution of general computations. That is, if $M$ is a machine that runs for $t$ steps producing a sequence of configurations $c_0,c_1,\dots,c_t$, then there exist an efficient and effective way to produce a computationally sound proof for the computation $c_0  \xrightarrow{t} c_t$. This idea is referred to as Incrementally Verifiable Computation or IVC.
 
-The main goal is IVC is to produce compact, updatable proofs of correctness for a sequence of computations, so that each new step in the computation can be verified on its own while building on the guarantees of the previous steps. This technique significantly reduces the verification overhead for long or evolving computations, which is invaluable in scenarios like decentralized networks, outsourced computation, and any application requiring frequent correctness checks.
+The main goal of IVC is to produce compact, updatable proofs of correctness for a sequence of computations, so that each new step can be verified on its own while building on the guarantees of previous steps. This technique significantly reduces the verification overhead for long or evolving computations, which is invaluable in scenarios like decentralized networks, outsourced computation, and any application requiring frequent correctness checks.
 
 Kumar et al. (2021) \cite{kothapalli2022nova} introduced the proof system NOVA and the idea of recursive proofs, which are proofs that can ``prove the correctness of other proofs.'' Recursive proof composition is key to IVC where each proof attests to the correctness of both a step’s output and the validity of the previous step’s proof.
 
-HyperNova \cite{kothapalli2024hypernova} is a novel recursive argument system optimized for customizable constraint systems (CCS) that generalizes and improves upon prior approaches like Nova. It achieves efficiency through a folding scheme where the prover’s cryptographic costs are minimized and achieves zero-knowledge without relying on zkSNARKs.
-
-An IVC system allows the construction of proofs in zero-knowledge where the   proofs reveal no information about the underlying computation or its inputs beyond the validity of the claim \cite{valiant2008incrementally}.
-
+HyperNova \cite{kothapalli2024hypernova} is a novel recursive argument system optimized for customizable constraint systems (CCS) that generalizes and improves upon prior approaches like Nova. It achieves efficiency through a folding scheme where the prover’s cryptographic costs are minimized and achieves zero-knowledge without relying on zkSNARKs. An IVC system allows the construction of proofs in zero-knowledge where the proofs reveal no information about the underlying computation or its inputs beyond the validity of the claim \cite{valiant2008incrementally}.
 
 %------------------------------------------
 % 5. CONCLUSION
