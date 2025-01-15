@@ -5,6 +5,9 @@ from .mpi_lora_onnx_exporter import (
     LoraShapeTransformerMPI,
     export_lora_onnx_json_mpi,
 )
+from .a_server import LoRAServer, AServerTCP
+from .b_server import BaseModelClient
+
 
 __all__ = [
     'export_lora_submodules',
@@ -15,4 +18,7 @@ __all__ = [
     'normalize_lora_matrices_mpi',
     'LoraShapeTransformerMPI',
     'export_lora_onnx_json_mpi',
+    'LoRAServer',
+    'AServerTCP',
+    'BaseModelClient',
 ]
