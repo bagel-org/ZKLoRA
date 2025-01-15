@@ -14,11 +14,8 @@ from transformers import AutoConfig, AutoModelForCausalLM
 from peft import PeftModel
 
 # from zklora with the MPI exporter & proof generator
-from ..zklora import (
-    export_lora_onnx_json_mpi,
-    generate_proofs,
-    resolve_proof_paths,
-)
+from ..zk_proof_generator import generate_proofs, resolve_proof_paths
+from ..mpi_lora_onnx_exporter import export_lora_onnx_json_mpi
 
 def read_file_as_bytes(path: str) -> bytes:
     with open(path, "rb") as f:

@@ -9,7 +9,7 @@ import torch.nn as nn
 from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
 from peft.tuners.lora.layer import LoraLayer
 
-from ..zklora import batch_verify_proofs
+from ..zk_proof_generator import batch_verify_proofs
 
 class BToAComm:
     def __init__(self, host_a="127.0.0.1", port_a=30000):
