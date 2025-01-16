@@ -110,8 +110,9 @@ class LoRAServer:
         if not proof_res:
             print("[A] No proofs generated or something went wrong.")
         else:
-            print("[A] Proof generation done, reading them now...")
+            print("[A] Proof generation done.")
 
+        """
         proof_map = {}
         onnx_files = glob.glob(os.path.join(self.out_dir, "*.onnx"))
         if not onnx_files:
@@ -133,6 +134,8 @@ class LoRAServer:
             proof_map[base_name] = sub_dict
 
         return proof_map
+        """
+        return
 
 class AServerTCP(threading.Thread):
     def __init__(self, host, port, lora_server: LoRAServer, stop_event):
@@ -184,10 +187,19 @@ class AServerTCP(threading.Thread):
                     "output_array": out.cpu().numpy()
                 }
 
+            #elif rtype == "end_inference":
+            #    # Synchronously finalize proofs => no concurrency issues
+            #    proof_map = self.lora_server.finalize_proofs_and_collect()
+            #    resp = {"response_type":"end_inference_proofs","proof_map": proof_map}
+
             elif rtype == "end_inference":
-                # Synchronously finalize proofs => no concurrency issues
-                proof_map = self.lora_server.finalize_proofs_and_collect()
-                resp = {"response_type":"end_inference_proofs","proof_map": proof_map}
+                # generate proofs locally
+                self.lora_server.finalize_proofs_and_collect()
+                ack_resp = {
+                    "response_type": "end_inference_ack",
+                    "message": "A finished proof generation locally. B can close."
+                }
+
             else:
                 resp = {"error": f"Unknown request_type {rtype}"}
 

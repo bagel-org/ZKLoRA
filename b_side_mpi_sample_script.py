@@ -20,13 +20,8 @@ def main():
     loss_val = client.forward_loss(text)
     print(f"[B] final loss => {loss_val:.4f}")
 
-    out_dir = client.end_inference_and_retrieve_proofs()
-    print("[B] local proofs =>", out_dir)
-
-    if args.verify_proofs:
-        print("[B] verifying proofs in", out_dir)
-        total_t, c = batch_verify_proofs(proof_dir=out_dir, verbose=True)
-        print(f"[B] verified {c} proof(s) in {total_t:.2f} sec.")
+    client.end_inference()
+    print("[B] done. B can now fetch proof files from A and verify proofs.")
 
 if __name__=="__main__":
     main()

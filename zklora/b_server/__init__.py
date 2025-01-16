@@ -31,9 +31,9 @@ class BToAComm:
         return resp.get("output_array", None)
 
     def end_inference(self):
-        req = {"request_type":"end_inference"}
-        resp = self.send_and_recv(req)
-        return resp.get("proof_map", {})
+        req = {"request_type": "end_inference"}
+        resp = self.send_and_recv(req)#, timeout=600.0)  # might be slower if proof gen is big
+        return resp
 
     def send_and_recv(self, data_dict):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -133,28 +133,7 @@ class BaseModelClient:
             out = self.model(in_ids, labels=in_ids)
         return out.loss.item()
 
-    def end_inference_and_retrieve_proofs(self):
-        proof_map = self.comm.end_inference()
-        out_dir = "b-out"
-        os.makedirs(out_dir, exist_ok=True)
-
-        for base_name, fdict in proof_map.items():
-            pf = os.path.join(out_dir, f"{base_name}.pf")
-            with open(pf, "wb") as fp:
-                fp.write(fdict["proof"])
-
-            st = os.path.join(out_dir, f"{base_name}_settings.json")
-            with open(st, "wb") as fp:
-                fp.write(fdict["settings"])
-
-            vk = os.path.join(out_dir, f"{base_name}.vk")
-            with open(vk, "wb") as fp:
-                fp.write(fdict["verification_key"])
-
-            srs = os.path.join(out_dir, "kzg.srs")
-            with open(srs, "wb") as fp:
-                fp.write(fdict["srs"])
-
-            print(f"[B] wrote proof artifacts for '{base_name}' => {out_dir}/")
-
-        return out_dir
+    def end_inference(self):
+        # 1) request end_inference => server finalizes proofs locally => returns ack
+        resp = self.comm.end_inference()
+        print("[B] end_inference => got ack:", resp)
