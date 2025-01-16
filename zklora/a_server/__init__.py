@@ -112,29 +112,6 @@ class LoRAServer:
         else:
             print("[A] Proof generation done.")
 
-        """
-        proof_map = {}
-        onnx_files = glob.glob(os.path.join(self.out_dir, "*.onnx"))
-        if not onnx_files:
-            print(f"[A] STILL no ONNX files found in {self.out_dir}. Possibly submodules never triggered.")
-        for onnx_path in onnx_files:
-            base_name = os.path.splitext(os.path.basename(onnx_path))[0]
-            paths = resolve_proof_paths(self.out_dir, base_name)
-            if not paths:
-                continue
-            sub_dict = {}
-            try:
-                sub_dict["proof"] = read_file_as_bytes(paths.proof)
-                sub_dict["settings"] = read_file_as_bytes(paths.settings)
-                sub_dict["verification_key"] = read_file_as_bytes(paths.verification_key)
-                sub_dict["srs"] = read_file_as_bytes(paths.srs)
-            except FileNotFoundError:
-                print(f"[A] Missing file(s) for base_name={base_name}, skipping.")
-                continue
-            proof_map[base_name] = sub_dict
-
-        return proof_map
-        """
         return
 
 class AServerTCP(threading.Thread):
@@ -186,11 +163,6 @@ class AServerTCP(threading.Thread):
                     "response_type":"lora_forward_response",
                     "output_array": out.cpu().numpy()
                 }
-
-            #elif rtype == "end_inference":
-            #    # Synchronously finalize proofs => no concurrency issues
-            #    proof_map = self.lora_server.finalize_proofs_and_collect()
-            #    resp = {"response_type":"end_inference_proofs","proof_map": proof_map}
 
             elif rtype == "end_inference":
                 # generate proofs locally
