@@ -1,10 +1,11 @@
-from .lora_onnx_exporter import export_lora_submodules
-from .zk_proof_generator import generate_proofs, batch_verify_proofs, ProofPaths, resolve_proof_paths
+from .zk_proof_generator import batch_verify_proofs
+from .lora_contributor_mpi import LoRAServer, LoRAServerSocket
+from .base_model_user_mpi import BaseModelClient
+
 
 __all__ = [
-    'export_lora_submodules',
-    'generate_proofs',
     'batch_verify_proofs',
-    'ProofPaths',
-    'resolve_proof_paths'
+    'LoRAServer',
+    'LoRAServerSocket',
+    'BaseModelClient',
 ]
