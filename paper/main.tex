@@ -7,11 +7,12 @@
 \usepackage{amssymb}
 \usepackage{hyperref}
 \usepackage{xcolor}
+\usepackage[export]{adjustbox}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta, positioning, calc, fit}
 
-\title{\textbf{ZKLoRA: Efficient Verification of LoRA-Base Model Compatibility for Large Language Models}}
-\author{
+\title{\textbf{ZKLoRA: Efficient Zero-Knowledge Proofs for LoRA Verification}}
+\author{ \includegraphics[height=8em]{figs/bagel-logo-bw.png} \\
     \textbf{Bidhan Roy, Peter Potash, Marcos Villagra} \\
     Bagel Research Team\footnotemark[1] \\
     \texttt{bidhan@bagel.net, peter@bagel.net, marcos@bagel.net}
@@ -25,7 +26,7 @@
 \footnotetext[1]{Bagel is a research lab, making open source AI monetizable.}
 
 \begin{abstract}
-    Parameter-efficient fine-tuning (PEFT) techniques, including Low-Rank Adaptation (LoRA), are widely adopted to customize large-scale language models in distributed training environments. A base model owner may outsource LoRA development to an external contributor, creating two requirements: the owner must verify that the LoRA update stems from the designated open-source model, and the contributor must protect proprietary parameters until compensation is assured.
+    Parameter-efficient fine-tuning (PEFT) techniques, including Low-Rank Adaptation (LoRA), are widely adopted to customize large-scale language models in distributed training environments. A base model user may want to use LoRA weights developed by an external contributor, creating two requirements: the base model user must verify that the LoRA weights are effective when combined with the designated open-source model, and the contributor must protect proprietary parameters until compensation is assured.
     
     We propose \textbf{ZKLoRA}, a zero-knowledge protocol that leverages polynomial commitments, succinct proofs, and advanced cryptographic designs to confirm LoRA–base model compatibility \emph{without} disclosing private LoRA weights. Our evaluations show that verification requires only \textbf{1--2 seconds} per LoRA module for typical large models. This short verification time enables trust-driven collaboration across decentralized infrastructures and contract-based training pipelines, ensuring that the delivered LoRA is valid while preserving the contributor’s intellectual property.
 \end{abstract}
@@ -78,7 +79,7 @@ Figures~\ref{fig:verify_vs_numlora}, \ref{fig:proof_vs_numlora}, and \ref{fig:se
 
 From Figure~\ref{fig:verify_vs_numlora}, we see that models with a higher LoRA count (e.g., 80 modules for a large 70B model) can indeed lead to larger total verification time overall. However, the slope remains modest due to \texttt{ZKLoRA}’s succinct design. For instance, even if each module is verified individually at around 1--2 seconds, verifying 80 modules can be done in just a few minutes, which is still practical for real-world usage.
 
-Figures~\ref{fig:proof_vs_numlora} and \ref{fig:settings_vs_numlora} similarly show that \emph{proof generation} and \emph{settings time} scale with the number of LoRA modules, but also depend heavily on each module’s average size (indicated by larger or smaller dot size). These two steps (proof generation on the LoRA Owner’s side and cryptographic circuit setup) can become more expensive, yet remain feasible in decentralized settings or paid contract relationships. The \emph{Base Model User}, meanwhile, benefits from the relatively short verification overhead.
+Figures~\ref{fig:proof_vs_numlora} and \ref{fig:settings_vs_numlora} similarly show that \emph{proof generation} and \emph{settings time} scale with the number of LoRA modules, but also depend heavily on each module’s average size (indicated by larger or smaller dot size). These two steps (proof generation on the LoRA contributor’s side and cryptographic circuit setup) can become more expensive, yet remain feasible in decentralized settings or paid contract relationships. The \emph{Base Model User}, meanwhile, benefits from the relatively short verification overhead.
 
 Overall, these plots confirm that \texttt{ZKLoRA} can handle multiple LoRA modules with minimal overhead for verifying correctness, emphasizing the viability of repeated or multi-adapter scenarios in large-scale LLM pipelines.
 
@@ -90,22 +91,22 @@ Overall, these plots confirm that \texttt{ZKLoRA} can handle multiple LoRA modul
 A typical workflow involves:
 \begin{enumerate}
     \item \textbf{Base Model User} possessing a large LLM. 
-    \item \textbf{LoRA Owner} having proprietary low-rank adapter weights. 
+    \item \textbf{LoRA Contributor} having proprietary low-rank adapter weights. 
 \end{enumerate}
-However, these two parties must confirm the LoRA truly “fits” the base model. Using \texttt{ZKLoRA}, the LoRA Owner proves the adapter’s compatibility \emph{without} exposing private weights:
+However, these two parties must confirm the LoRA truly “fits” the base model. Using \texttt{ZKLoRA}, the LoRA Contributor proves the adapter’s compatibility \emph{without} exposing private weights:
 
 \begin{enumerate}
     \item \textbf{Partial Forward Pass.}
     The Base Model User runs the unaltered layers of the LLM, producing partial activations.
 
     \item \textbf{LoRA Transform + Proof Gen.}
-    The LoRA Owner applies private LoRA updates, constructing a zero-knowledge proof to attest correct usage.
+    The LoRA Contributor applies private LoRA forward passes based on partial activations, constructing a zero-knowledge proof to attest correct usage.
 
     \item \textbf{Verification per LoRA Module (1--2 sec).}
     The user verifies each proof quickly, ensuring the final outputs reflect a valid LoRA for the base model.
 
     \item \textbf{Evaluate.}
-    With trust in the LoRA’s correctness, the user measures performance (e.g., loss).
+    With trust in the LoRA’s correctness, the user measures performance (e.g. loss).
 \end{enumerate}
 
 \begin{figure}[ht]
@@ -137,7 +138,7 @@ However, these two parties must confirm the LoRA truly “fits” the base model
 ]
 \node[block, label=above:\textcolor{teal}{\textbf{Input}}] (input) {$\mathbf{x}$};
 \node[block, right=1.65cm of input] (W1) {$\mathbf{W}_1$};
-\node[dashedblock, above=1.6cm of W1, label=above:\textcolor{orange!70!black}{\textbf{LoRA Owner}}] (LoRA) {LoRA for Layer 1};
+\node[dashedblock, above=1.6cm of W1, label=above:\textcolor{orange!70!black}{\textbf{LoRA Contributor}}] (LoRA) {LoRA for Layer 1};
 \node[block, right=1.65cm of W1] (act) {ReLU};
 \node[block, right=1.65cm of act] (W2) {$\mathbf{W}_2$};
 \node[block, label=above:\textcolor{teal}{\textbf{Output}}, right=1.65cm of W2] (output) {$\mathbf{y}$};
@@ -171,10 +172,10 @@ We parse the LoRA-augmented layers, producing a cryptographic circuit capturing 
 A settings file, proving key, and verification key are generated. A structured reference string (SRS) may also be needed.
 
 \paragraph{(3) Witness Creation.}
-The LoRA Owner runs the partial activations through the circuit, tracking all wire values in a “witness.” 
+The LoRA Contributor runs the partial activations through the circuit, tracking all wire values in a “witness.” 
 
 \paragraph{(4) Proof.}
-Using the witness plus proving key, the LoRA Owner constructs a proof. 
+Using the witness plus proving key, the LoRA Contributor constructs a proof. 
 
 \paragraph{(5) Verification per Module.}
 Each LoRA module’s proof is tested with the verification key, taking \textbf{1--2 seconds}. This minimal overhead is \texttt{ZKLoRA}’s main advantage for frequent or large-scale checks.
@@ -203,7 +204,7 @@ HyperNova \cite{kothapalli2024hypernova} is a novel recursive argument system op
 %------------------------------------------
 \section{Conclusion}
 
-\texttt{ZKLoRA} provides a fast, robust mechanism to ensure that private LoRA modules remain consistent with a large base model. Our evaluations indicate that each LoRA module’s correctness can be verified in about 1--2 seconds, even for multi-billion-parameter LLMs. This efficiency bridges the gap between privacy-preserving LoRA development and practical, real-time validation in large-scale deployments. Future expansions could integrate multi-owner LoRAs, advanced zero-knowledge proofs for further performance gains, or partial data-privacy frameworks to shield user inputs as well as LoRA parameters.
+\texttt{ZKLoRA} provides a fast, robust mechanism to ensure that private LoRA modules remain consistent with a large base model. Our evaluations indicate that each LoRA module’s correctness can be verified in about 1--2 seconds, even for multi-billion-parameter LLMs. This efficiency bridges the gap between privacy-preserving LoRA development and practical, real-time validation in large-scale deployments. Future expansions could integrate multi-contributor LoRAs, advanced zero-knowledge proofs for further performance gains, or partial data-privacy frameworks to shield user inputs as well as LoRA parameters.
 
 \bibliographystyle{plain}
 \bibliography{references}
