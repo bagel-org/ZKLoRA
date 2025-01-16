@@ -1,8 +1,8 @@
-## ZKLoRA: Verifiable LoRA Fine-Tuning & Multi-Party Inference with Zero-Knowledge Proofs
+## ZKLoRA: Verifiable LoRA Utility & Multi-Party Inference with Zero-Knowledge Proofs
 
 Parameter-efficient fine-tuning (PEFT) methods, such as Low-Rank Adaptation (LoRA), have revolutionized how large-scale language models are specialized for new tasks. These approaches reduce the computational and memory overhead drastically compared to full fine-tuning, making them highly efficient and practical. However, real-world deployment often faces a **trust dilemma**:
 
-1. **Verification by the Base Model Owner**: The base model owner commissions a LoRA fine-tuning from a third party but must verify that the LoRA update is genuinely derived from the specified base model.
+1. **Verification by the Base Model User**: The base model user would like to leverage a set of LoRA paramters on top of a base model, but needs verification that those LoRA parameters perform well on the target task.
 2. **Protection for the LoRA Contributor**: The contributor invests resources in fine-tuning and needs assurance of fair compensation without prematurely revealing the LoRA parameters.
 
 **ZKLoRA** addresses this dilemma using **zero-knowledge proofs** to securely verify LoRA updates without exposing the parameters themselves. Our approach:
