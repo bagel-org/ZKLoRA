@@ -195,7 +195,7 @@ class AServerTCP(threading.Thread):
             elif rtype == "end_inference":
                 # generate proofs locally
                 self.lora_server.finalize_proofs_and_collect()
-                ack_resp = {
+                resp = {
                     "response_type": "end_inference_ack",
                     "message": "A finished proof generation locally. B can close."
                 }
