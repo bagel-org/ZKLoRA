@@ -1,6 +1,6 @@
 import argparse
 
-from zklora import BaseModelClient, batch_verify_proofs
+from zklora import BaseModelClient
 
 def main():
     parser = argparse.ArgumentParser()
