@@ -114,7 +114,7 @@ class LoRAServer:
 
         return
 
-class AServerTCP(threading.Thread):
+class LoRAServerSocket(threading.Thread):
     def __init__(self, host, port, lora_server: LoRAServer, stop_event):
         super().__init__()
         self.host = host

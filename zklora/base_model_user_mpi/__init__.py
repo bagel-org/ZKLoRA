@@ -7,11 +7,8 @@ import os
 import torch
 import torch.nn as nn
 from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
-from peft.tuners.lora.layer import LoraLayer
 
-from ..zk_proof_generator import batch_verify_proofs
-
-class BToAComm:
+class BaseModelToLoRAComm:
     def __init__(self, host_a="127.0.0.1", port_a=30000):
         self.host_a = host_a
         self.port_a = port_a
@@ -61,7 +58,7 @@ class BToAComm:
         return resp
 
 class RemoteLoRAWrappedModule(nn.Module):
-    def __init__(self, sub_name, local_sub, comm: BToAComm, combine_mode="replace"):
+    def __init__(self, sub_name, local_sub, comm: BaseModelToLoRAComm, combine_mode="replace"):
         super().__init__()
         self.sub_name = sub_name
         self.local_sub = local_sub
@@ -92,7 +89,7 @@ class BaseModelClient:
 
         self.tokenizer = AutoTokenizer.from_pretrained(base_model)
 
-        self.comm = BToAComm(host_a, port_a)
+        self.comm = BaseModelToLoRAComm(host_a, port_a)
         self.combine_mode = combine_mode
 
     def _navigate(self, mod: nn.Module, parts: list[str]) -> nn.Module:

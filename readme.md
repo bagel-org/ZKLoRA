@@ -1,4 +1,4 @@
-## ZKLoRA: Verifiable LoRA Utility & Multi-Party Inference with Zero-Knowledge Proofs
+## ZKLoRA: Efficient Zero-Knowledge Proofs for LoRA Verification
 
 Parameter-efficient fine-tuning (PEFT) methods, such as Low-Rank Adaptation (LoRA), have revolutionized how large-scale language models are specialized for new tasks. These approaches reduce the computational and memory overhead drastically compared to full fine-tuning, making them highly efficient and practical. However, real-world deployment often faces a **trust dilemma**:
 
@@ -13,8 +13,8 @@ Parameter-efficient fine-tuning (PEFT) methods, such as Low-Rank Adaptation (LoR
 ### ZKLoRA + Multi-Party Inference (MPI)
 
 We apply ZKLoRA to a **multi-party inference** scenario, where:
-- **User A** (LoRA owner) holds LoRA-augmented submodules.
-- **User B** (base model owner) holds the large base model.
+- **User A** (LoRA contributor) holds LoRA-augmented submodules.
+- **User B** (base model user) has the large base model.
 - They **collaborate** on inference while ensuring the LoRA computations remain hidden, and **A** can generate zero-knowledge proofs of the LoRA inference correctness.
 
 **After** the inference run, **A** creates proof artifacts offline (e.g., `.onnx`, `.json`, plus the proof files) and **B** can download them to locally verify that the LoRA computations were performed faithfully.
@@ -23,11 +23,11 @@ We apply ZKLoRA to a **multi-party inference** scenario, where:
 
 ## Quick Usage Instructions
 
-Below are **two** sample scripts illustrating multi-party inference with proof generation. **A** is the LoRA provider, **B** is the base model owner.
+Below are **two** sample scripts illustrating multi-party inference with proof generation. **A** is the LoRA contributor, **B** is the base model user.
 
 ### 1. LoRA Provider Side (User A)
 
-Use `lora_owner_sample_script.py` (or an equivalent script in your project) to:
+Use `lora_contributor_sample_script.py` (or an equivalent script in your project) to:
 
 1. **Host** the LoRA submodules on a specific IP & port.
 2. Listen for requests from **B** during inference (e.g., forward pass submodules).
@@ -70,9 +70,9 @@ if __name__ == "__main__":
 
 When **B** calls “end_inference,” this script synchronously finalizes proof generation and stores proof artifacts (e.g., in `a-out/`). **A** can then share or host these files for **B** to download and verify offline.
 
-### 2. Base Model Owner Side (User B)
+### 2. Base Model User Side (User B)
 
-Use `base_model_owner_sample_script.py` to:
+Use `base_model_user_sample_script.py` to:
 
 1. Load the original base model from `from_pretrained`.
 2. Connect to **A**’s submodules (via IP & port).
@@ -173,8 +173,8 @@ You can set `--verbose` for extra logs about verification timing and success/fai
 ## Summary
 
 - **ZKLoRA** solves a trust problem in LoRA fine-tuning: verifying that LoRA updates or inferences are derived from a legitimate base model, without exposing the LoRA parameters.
-- **Multi-Party Inference** workflow lets a base model owner (B) and a LoRA provider (A) do secure inference, with **A** generating zero-knowledge proofs offline.
-- **A** runs `lora_owner_sample_script.py`. **B** runs `base_model_owner_sample_script.py`. 
+- **Multi-Party Inference** workflow lets a base model user (B) and a LoRA contributor (A) do secure inference, with **A** generating zero-knowledge proofs offline.
+- **A** runs `lora_contributor_sample_script.py`. **B** runs `base_model_user_sample_script.py`. 
 - After inference, **B** obtains `a-out/` proof files from **A** and verifies them with `verify_proofs.py`.
 
 ZKLoRA opens up new avenues for **secure, trust-minimized** AI collaboration using **PEFT** methods—enabling verifiable LoRA updates **and** multi-party inference with minimal overhead.
