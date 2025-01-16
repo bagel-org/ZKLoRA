@@ -3,6 +3,9 @@ import argparse
 from zklora import batch_verify_proofs
 
 def main():
+    parser = argparse.ArgumentParser(
+        description="Verify LoRA proof artifacts in a given directory."
+    )
     parser.add_argument(
         "--proof_dir",
         type=str,
