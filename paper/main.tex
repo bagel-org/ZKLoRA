@@ -47,8 +47,8 @@ This rapid, per-module check allows the Base Model User to efficiently, independ
 \section{Preliminary Results}
 
 We benchmarked \texttt{ZKLoRA} across several LLMs and smaller models with different numbers of LoRA modules. 
-Our central question is how \emph{total} verification, proof generation, and settings times grow with \textbf{the number of LoRA modules} (\#LoRA), while also considering each LoRA's average parameter size. 
-Figure~\ref{fig:verify_vs_numlora} and Table~\ref{tab:settings_proof} detail this trade-off.
+Our central question is how verification times, as well as settings and proof generation times, grow with \textbf{the number of LoRA modules}, while also considering each LoRA's average parameter size. 
+Figure~\ref{fig:verify_vs_numlora} and Table~\ref{tab:settings_proof} detail this trade-off. \footnote{Note that the number of LoRA modules in a given model is not purely a function of number of layers -- it is also a choice of which weight matrices within each layer is targeted. For example, just targeting one matrix per layer (ie the Query matrix in the Attention Block) will yeild one LoRA per layer, but, for example targeting the Query, Key, and Value matrices yeild three matrices per layer and makes the total number of LoRAs $3 \times num$\_$layers$.}
 
 \begin{figure}[ht]
     \centering
@@ -61,7 +61,7 @@ Figure~\ref{fig:verify_vs_numlora} and Table~\ref{tab:settings_proof} detail thi
 \centering
 \begin{tabular}{lcccc}
 \hline
-Base Model & \# of LoRAs & Avg LoRA Params & Avg Settings & Avg Proof \\
+Base Model & \# of LoRAs & Avg LoRA Size & Avg Settings & Avg Proof \\
 \hline
 distilgpt2 & 24 & 24576 & 38.0 & 31.6 \\
 openai-community/gpt2 & 48 & 49152 & 43.6 & 34.9 \\
@@ -71,12 +71,12 @@ meta-llama/Llama-3.1-8B-Instruct & 32 & 163840 & 57.4 & 47.7 \\
 mistralai/Mixtral-8x7B-Instruct-v0.1 & 32 & 327680 & 86.1 & 73.7 \\
 \hline
 \end{tabular}
-\caption{Model Performance Metrics}\label{tab:settings_proof}
+\caption{Model benchmark results for Settings and Proof generation time averaged by number of LoRA modules.}\label{tab:settings_proof}
 \end{table}
 
 From Figure~\ref{fig:verify_vs_numlora}, we see that models with a higher LoRA count (e.g., 80 modules for a large 70B model) can indeed lead to larger total verification time overall. However, the slope remains modest due to \texttt{ZKLoRA}’s succinct design. For instance, even if each module is verified individually at around 1--2 seconds, verifying 80 modules can be done in just a few minutes, which is still practical for real-world usage.
 
-Table~\ref{tab:settings_proof} similarly show that \emph{proof generation} and \emph{settings time} scale with the number of LoRA modules, but also depend heavily on each module’s average size (indicated by larger or smaller dot size). These two steps (proof generation on the LoRA contributor’s side and cryptographic circuit setup) can become more expensive, yet remain feasible in decentralized settings or paid contract relationships. The \emph{Base Model User}, meanwhile, benefits from the relatively short verification overhead.
+Table~\ref{tab:settings_proof} similarly shows that \emph{proof generation} and \emph{settings time} scale with the number of LoRA modules, but also depend heavily on each module’s average size (indicated by larger or smaller dot size). These two steps (proof generation on the LoRA contributor’s side and cryptographic circuit setup) can become more expensive, yet remain feasible in decentralized settings or paid contract relationships. The \emph{Base Model User}, meanwhile, benefits from the relatively short verification overhead.
 
 Overall, these plots confirm that \texttt{ZKLoRA} can handle multiple LoRA modules with minimal overhead for verifying correctness, emphasizing the viability of repeated or multi-adapter scenarios in large-scale LLM pipelines.
 
@@ -241,7 +241,7 @@ However, these two parties must confirm the LoRA truly “fits” the base model
 
 \end{tikzpicture}
 \caption{Flow in a Multi-Party Inference scenario between local base model and remote LoRA weights. 
-The base model performs a local forward pass, computing \(\mathbf{base\_out} = \mathbf{Wx}\). In parallel, the input \(\mathbf{x}\) is sent to the remote LoRA module, which returns \(\mathbf{\Delta} = \mathbf{BAx}\). The final output is \(\mathbf{base\_out} + \mathbf{\Delta}\).}
+The base model performs a local forward pass, computing \(\mathbf{base\_out} = \mathbf{Wx}\). In parallel, the input \(\mathbf{x}\) is sent to the remote LoRA module, which returns \(\mathbf{\Delta} = \mathbf{BAx}\), where \(\mathbf{B,A}\) are the low-rank finetuned matrices. The final output is \(\mathbf{base\_out} + \mathbf{\Delta}\).}
 \label{fig:remote-lora-flow}
 \end{figure}
 
