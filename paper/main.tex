@@ -48,38 +48,35 @@ This rapid, per-module check allows the Base Model User to efficiently, independ
 
 We benchmarked \texttt{ZKLoRA} across several LLMs and smaller models with different numbers of LoRA modules. 
 Our central question is how \emph{total} verification, proof generation, and settings times grow with \textbf{the number of LoRA modules} (\#LoRA), while also considering each LoRA's average parameter size. 
-Figures~\ref{fig:verify_vs_numlora}, \ref{fig:proof_vs_numlora}, and \ref{fig:settings_vs_numlora} visualize this trade-off:
-\begin{itemize}
-    \item The x-axis is \textbf{the number of LoRA modules} for each model setup,
-    \item The y-axis is one of: \textit{total verification time}, \textit{total proof generation time}, or \textit{total settings time},
-    \item \textbf{Marker size} is proportional to the average LoRA size (in parameters).
-    \item The legend indicates each model’s average LoRA size with a label \textit{“Avg LoRA Size=xxK”}.
-\end{itemize}
+Figure~\ref{fig:verify_vs_numlora} and Table~\ref{tab:settings_proof} detail this trade-off.
 
 \begin{figure}[ht]
     \centering
-    \includegraphics[width=0.65\linewidth]{figs/fig_verify_vs_numlora.pdf}
+    \includegraphics[width=0.9\linewidth]{figs/fig_verify_vs_numlora.pdf}
     \caption{Total verification time (seconds) vs. number of LoRA modules, with dot size reflecting average LoRA size.}
     \label{fig:verify_vs_numlora}
 \end{figure}
 
-\begin{figure}[ht]
-    \centering
-    \includegraphics[width=0.65\linewidth]{figs/fig_proof_vs_numlora.pdf}
-    \caption{Total proof generation time (seconds) vs. number of LoRA modules, with dot size reflecting average LoRA size.}
-    \label{fig:proof_vs_numlora}
-\end{figure}
-
-\begin{figure}[ht]
-    \centering
-    \includegraphics[width=0.65\linewidth]{figs/fig_settings_vs_numlora.pdf}
-    \caption{Total settings time (seconds) vs. number of LoRA modules, with dot size reflecting average LoRA size.}
-    \label{fig:settings_vs_numlora}
-\end{figure}
+\begin{table}[h]
+\centering
+\begin{tabular}{lcccc}
+\hline
+Base Model & \# of LoRAs & Avg LoRA Params & Avg Settings & Avg Proof \\
+\hline
+distilgpt2 & 24 & 24576 & 38.0 & 31.6 \\
+openai-community/gpt2 & 48 & 49152 & 43.6 & 34.9 \\
+meta-llama/Llama-3.2-1B & 32 & 26624 & 37.2 & 31.0 \\
+meta-llama/Llama-3.3-70B-Instruct & 80 & 147456 & 54.9 & 46.9 \\
+meta-llama/Llama-3.1-8B-Instruct & 32 & 163840 & 57.4 & 47.7 \\
+mistralai/Mixtral-8x7B-Instruct-v0.1 & 32 & 327680 & 86.1 & 73.7 \\
+\hline
+\end{tabular}
+\caption{Model Performance Metrics}\label{tab:settings_proof}
+\end{table}
 
 From Figure~\ref{fig:verify_vs_numlora}, we see that models with a higher LoRA count (e.g., 80 modules for a large 70B model) can indeed lead to larger total verification time overall. However, the slope remains modest due to \texttt{ZKLoRA}’s succinct design. For instance, even if each module is verified individually at around 1--2 seconds, verifying 80 modules can be done in just a few minutes, which is still practical for real-world usage.
 
-Figures~\ref{fig:proof_vs_numlora} and \ref{fig:settings_vs_numlora} similarly show that \emph{proof generation} and \emph{settings time} scale with the number of LoRA modules, but also depend heavily on each module’s average size (indicated by larger or smaller dot size). These two steps (proof generation on the LoRA contributor’s side and cryptographic circuit setup) can become more expensive, yet remain feasible in decentralized settings or paid contract relationships. The \emph{Base Model User}, meanwhile, benefits from the relatively short verification overhead.
+Table~\ref{tab:settings_proof} similarly show that \emph{proof generation} and \emph{settings time} scale with the number of LoRA modules, but also depend heavily on each module’s average size (indicated by larger or smaller dot size). These two steps (proof generation on the LoRA contributor’s side and cryptographic circuit setup) can become more expensive, yet remain feasible in decentralized settings or paid contract relationships. The \emph{Base Model User}, meanwhile, benefits from the relatively short verification overhead.
 
 Overall, these plots confirm that \texttt{ZKLoRA} can handle multiple LoRA modules with minimal overhead for verifying correctness, emphasizing the viability of repeated or multi-adapter scenarios in large-scale LLM pipelines.
 
@@ -109,6 +106,7 @@ However, these two parties must confirm the LoRA truly “fits” the base model
     With trust in the LoRA’s correctness, the user measures performance (e.g. loss).
 \end{enumerate}
 
+\iffalse
 \begin{figure}[ht]
 \centering
 \begin{tikzpicture}[
@@ -157,6 +155,99 @@ However, these two parties must confirm the LoRA truly “fits” the base model
 \caption{zklora inference flow on a 2-layer neural network where the first layer has private LoRA weights added.}
 \label{fig:toy-mlp-lora}
 \end{figure}
+\fi
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+    font=\small,
+    >=latex,
+    thick,
+    block/.style={
+      draw,
+      rounded corners,
+      align=center,
+      minimum width=2cm,
+      minimum height=1.2cm,
+      fill=blue!5
+    },
+    dashedblock/.style={
+      draw,
+      dashed,
+      rounded corners,
+      align=center,
+      fill=orange!10,
+      minimum width=2cm,
+      minimum height=1.2cm
+    },
+    sumblock/.style={
+      draw,
+      circle,
+      fill=gray!20,
+      inner sep=1pt,
+      minimum size=0.5cm
+    },
+    arrow/.style={->, thick},
+    node distance=2.5cm
+]
+
+% 1) Input x
+\node[block, label=above:\textcolor{teal}{\textbf{Input}}] (xnode) {\(\mathbf{x}\)};
+
+% 2) Local submodule (removed label)
+\node[block, right=2.5cm of xnode] (localSub) {\textbf{Wx}};
+
+% 3) Summation or aggregator (removed z label)
+\node[sumblock, right=2.5cm of localSub] (sumNode) {\(+\)};
+
+% 4) Final output
+\node[block, right=2.5cm of sumNode, 
+      label=above:\textcolor{teal}{\textbf{Final Output}}] (finalOut) {%
+\(\textbf{h}\)};
+
+% 5) The dashed remote LoRA block
+\node[dashedblock, above=1.8cm of localSub, 
+      label=above:\textcolor{orange!70!black}{\textbf{Remote LoRA}}] 
+(lora) {\(\Delta = \mathbf{BAx}\)};
+
+% ARROWS
+% x -> localSub
+\draw[->, teal!70!black] (xnode) -- node[above, font=\scriptsize]{\textbf{local forward}} (localSub);
+
+% localSub -> aggregator
+\draw[->, teal!70!black] (localSub) -- 
+   node[above, font=\scriptsize]{\(\textbf{base out}\)} (sumNode);
+
+% aggregator -> final
+\draw[->, teal!70!black] (sumNode) -- (finalOut);
+
+% x -> remote LoRA (increased font size)
+\draw[->, dashed, orange!70!black] (xnode.north) to[bend left=18]
+   node[left, font=\small]{send \(\mathbf{x}\)} (lora.west);
+
+% remote LoRA -> aggregator (increased font size)
+\draw[->, dashed, orange!70!black] (lora.east) to[bend right=15]
+   node[right, font=\small]{\(\mathbf{\Delta}\)} (sumNode.north);
+
+% Base Model box with label shifted left
+\node[
+  draw,
+  rounded corners,
+  thick,
+  color=blue!40!black,
+  fit=(xnode)(localSub)(sumNode)(finalOut),
+  label={[font=\small, color=blue!40!black, xshift=-1.5cm]above:\textbf{Base Model User}}
+] (baseBox) {};
+
+\end{tikzpicture}
+\caption{Flow in a Multi-Party Inference scenario between local base model and remote LoRA weights. 
+The base model performs a local forward pass, computing \(\mathbf{base\_out} = \mathbf{Wx}\). In parallel, the input \(\mathbf{x}\) is sent to the remote LoRA module, which returns \(\mathbf{\Delta} = \mathbf{BAx}\). The final output is \(\mathbf{base\_out} + \mathbf{\Delta}\).}
+\label{fig:remote-lora-flow}
+\end{figure}
+
+
+
+
 
 %------------------------------------------
 % 3. HOW WE GENERATE THE ZERO-KNOWLEDGE PROOF
