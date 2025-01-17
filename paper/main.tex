@@ -106,6 +106,111 @@ However, these two parties must confirm the LoRA truly “fits” the base model
     With trust in the LoRA’s correctness, the user measures performance (e.g. loss).
 \end{enumerate}
 
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+    font=\small,
+    >=latex,
+    thick,
+    node distance=1.6cm,
+    stepbox/.style={
+      draw,
+      rounded corners,
+      minimum width=6.2cm,
+      minimum height=2.4cm,
+      align=center,
+      fill=gray!10,
+      font=\bfseries
+    },
+    subblock/.style={
+      draw,
+      rounded corners,
+      align=center,
+      minimum width=1.6cm,
+      minimum height=0.8cm,
+      fill=gray!20,
+      font=\scriptsize
+    },
+    arrow/.style={->, thick},
+]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Step 1 BOX (Multi-Party Inference)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\node[stepbox,
+      label={[above=2pt]:{\footnotesize \textbf{Step 1: Multi-Party Inference}}}] (step1) 
+{\vspace{4pt}};  % minimal text inside, slight vertical spacing
+
+% Inside Step 1: Two sub-blocks horizontally
+\node[subblock,
+      label={[font=\scriptsize]above:{Base Model User}},
+      anchor=center, 
+      xshift=-1.6cm,
+      yshift=-0.4cm] 
+(bmuser) at (step1.center)
+{};
+
+\node[subblock,
+      label={[font=\scriptsize]above:{LoRA Contributor}},
+      anchor=center, 
+      xshift=+1.6cm,
+      yshift=-0.4cm] 
+(lorablk) at (step1.center)
+{};
+
+% Two separate arrows: "Base Acts" & "LoRA Acts"
+\draw[arrow] 
+  ([yshift=-0.05cm]bmuser.east) 
+    to[bend left=20] 
+  node[midway, above, yshift=-0.1cm, font=\scriptsize]{Base Acts}
+  ([yshift=-0.05cm]lorablk.west);
+
+\draw[arrow] 
+  ([yshift=-0.25cm]lorablk.west) 
+    to[bend right=20] 
+  node[midway, below, yshift=+0.1cm, font=\scriptsize]{LoRA Acts}
+  ([yshift=-0.25cm]bmuser.east);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Step 2 BOX (Proof Generation), below step1
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\node[stepbox, fill=orange!15, 
+      label={[above=2pt]:{\footnotesize \textbf{Step 2: Proof Generation}}}, 
+      below=of step1] (step2)
+{\footnotesize LoRA Contributor \\
+Builds Zero-Knowledge Proofs};
+
+% Arrow from step1 -> step2 with text "LoRA input/output acts"
+\draw[arrow] (step1.south) -- node[left, xshift=-0.1cm, font=\scriptsize]{LoRA input/output acts} (step2.north);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Step 3 BOX (Verification), below step2
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\node[stepbox, fill=blue!10, 
+      label={[above=2pt]:{\footnotesize \textbf{Step 3: Verification}}}, 
+      below=of step2] (step3)
+{\footnotesize Base Model User \\
+Verifies each proof};
+
+% Arrow from step2 -> step3
+\draw[arrow] (step2.south) -- node[left, font=\scriptsize]{\textit{proof files}} (step3.north);
+
+\end{tikzpicture}
+\caption{\textbf{Three-Step ZKLoRA Process (Vertical).}
+\textbf{(1)} Base Model User and LoRA Contributor exchange ``Base Acts'' and ``LoRA Acts'' in a full multi-party inference. 
+\textbf{(2)} The LoRA Contributor generates cryptographic proofs for correctness. 
+\textbf{(3)} The Base Model User verifies these proofs, ensuring correct LoRA alignment without revealing private adapter weights.}
+\label{fig:zklora_3steps}
+\end{figure}
+
+
+
+
+
+
+
+
+
 \iffalse
 \begin{figure}[ht]
 \centering
