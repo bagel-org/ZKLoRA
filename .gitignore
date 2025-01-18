@@ -16,3 +16,14 @@ proof_artifacts
 lora_onnx_params
 intermediate_activations
 nohup.out
+*.log
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz
+*.toc
+.DS_Store
