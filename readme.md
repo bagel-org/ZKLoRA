@@ -2,7 +2,15 @@
   <img src="paper/figs/bagel-logo.png" alt="ZKLoRA Logo" width="200"/>
 </p>
 
-[![Twitter Follow](https://img.shields.io/twitter/follow/bagelopenAI?style=social)](https://twitter.com/bagelopenAI)
+<p align="center">
+  <a href="https://twitter.com/bagelopenAI">
+    <img src="https://img.shields.io/twitter/follow/bagelopenAI?style=social" alt="Twitter Follow"/>
+  </a>
+  
+  <a href="https://blog.bagel.net">
+    <img src="https://img.shields.io/badge/Follow%20on-Substack-orange?style=social&logo=substack" alt="Substack Follow"/>
+  </a>
+</p>
 
 ## ZKLoRA: Efficient Zero-Knowledge Proofs for LoRA Verification
 
