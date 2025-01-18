@@ -178,3 +178,9 @@ if __name__ == "__main__":
 - Scales efficiently to handle multiple LoRA modules in production environments
 
 Future work includes adding polynomial commitments for base model activations and supporting multi-contributor LoRA scenarios.
+
+## License
+
+This project is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License - see the [LICENSE](LICENSE) file for details. This means you are free to use, share, and adapt the work for non-commercial purposes, as long as you give appropriate credit and distribute your contributions under the same license.
+
+[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
