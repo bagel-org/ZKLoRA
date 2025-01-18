@@ -8,6 +8,8 @@
 \usepackage{hyperref}
 \usepackage{xcolor}
 \usepackage[export]{adjustbox}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta, positioning, calc, fit}
 
@@ -80,31 +82,6 @@ Table~\ref{tab:settings_proof} similarly shows that \emph{proof generation} and 
 
 Overall, these plots confirm that \texttt{ZKLoRA} can handle multiple LoRA modules with minimal overhead for verifying correctness, emphasizing the viability of repeated or multi-adapter scenarios in large-scale LLM pipelines.
 
-%------------------------------------------
-% 2. Ensuring LoRA–Base Model Compatibility with ZKLoRA
-%------------------------------------------
-\section{Ensuring LoRA–Base Model Compatibility}
-
-A typical workflow involves:
-\begin{enumerate}
-    \item \textbf{Base Model User} possessing a large LLM. 
-    \item \textbf{LoRA Contributor} having proprietary low-rank adapter weights. 
-\end{enumerate}
-However, these two parties must confirm the LoRA truly “fits” the base model. Using \texttt{ZKLoRA}, the LoRA Contributor proves the adapter’s compatibility \emph{without} exposing private weights:
-
-\begin{enumerate}
-    \item \textbf{Partial Forward Pass.}
-    The Base Model User runs the unaltered layers of the LLM, producing partial activations.
-
-    \item \textbf{LoRA Transform + Proof Gen.}
-    The LoRA Contributor applies private LoRA forward passes based on partial activations, constructing a zero-knowledge proof to attest correct usage.
-
-    \item \textbf{Verification per LoRA Module (1--2 sec).}
-    The user verifies each proof quickly, ensuring the final outputs reflect a valid LoRA for the base model.
-
-    \item \textbf{Evaluate.}
-    With trust in the LoRA’s correctness, the user measures performance (e.g. loss).
-\end{enumerate}
 
 \begin{figure}[ht]
 \centering
@@ -205,63 +182,6 @@ Verifies each proof};
 
 
 
-
-
-
-
-
-
-\iffalse
-\begin{figure}[ht]
-\centering
-\begin{tikzpicture}[
-    font=\small,
-    >=latex,
-    thick,
-    block/.style={
-      draw,
-      rounded corners,
-      align=center,
-      minimum width=1.65cm,  % Decreased from 1.8cm to 1.65cm
-      minimum height=0.9cm,
-      fill=gray!10  % Light gray background for regular blocks
-    },
-    dashedblock/.style={
-      draw,
-      dashed,
-      rounded corners,
-      align=center,
-      font=\footnotesize,
-      fill=orange!10,  % Light orange background for LoRA block
-      minimum width=1.65cm,  % Decreased to match other blocks
-      minimum height=0.9cm
-    },
-    arrow/.style={->, thick},
-    node distance=1.65cm  % Decreased from 1.8cm to 1.65cm
-]
-\node[block, label=above:\textcolor{teal}{\textbf{Input}}] (input) {$\mathbf{x}$};
-\node[block, right=1.65cm of input] (W1) {$\mathbf{W}_1$};
-\node[dashedblock, above=1.6cm of W1, label=above:\textcolor{orange!70!black}{\textbf{LoRA Contributor}}] (LoRA) {LoRA for Layer 1};
-\node[block, right=1.65cm of W1] (act) {ReLU};
-\node[block, right=1.65cm of act] (W2) {$\mathbf{W}_2$};
-\node[block, label=above:\textcolor{teal}{\textbf{Output}}, right=1.65cm of W2] (output) {$\mathbf{y}$};
-\draw[->, teal!60!black] (input) -- node[above, font=\scriptsize]{local multiply} (W1);
-\draw[->, dashed, orange!70!black] (W1.north) to[bend left=15] node[left, font=\scriptsize]{partial acts} (LoRA.south);
-\draw[->, dashed, orange!70!black] (LoRA.south) to[bend left=15] node[right, font=\scriptsize]{updated $\mathbf{z}'$} (W1.north);
-\draw[->, teal!60!black] (W1) -- node[above, font=\scriptsize]{$\mathbf{z}'$} (act);
-\draw[->, teal!60!black] (act) -- node[above, font=\scriptsize]{hidden} (W2);
-\draw[->, teal!60!black] (W2) -- (output);
-\node[draw, rounded corners, thick, color=blue!40!black,
-      fit=(input)(W1)(act)(W2)(output),
-      label={[font=\small, color=blue!40!black, xshift=2cm]above:\textbf{Base Model User}},
-      inner sep=0.6cm
-] (baseModelFit) {};
-\end{tikzpicture}
-\caption{zklora inference flow on a 2-layer neural network where the first layer has private LoRA weights added.}
-\label{fig:toy-mlp-lora}
-\end{figure}
-\fi
-
 \begin{figure}[ht]
 \centering
 \begin{tikzpicture}[
@@ -350,31 +270,62 @@ The base model performs a local forward pass, computing \(\mathbf{base\_out} = \
 \label{fig:remote-lora-flow}
 \end{figure}
 
-
-
-
-
 %------------------------------------------
-% 3. HOW WE GENERATE THE ZERO-KNOWLEDGE PROOF
+% 3. ZKLoRA
 %------------------------------------------
-\section{Zero-Knowledge Proof Generation}
+\section{ZKLoRA}
+We implement a protocol that not only supports multi-party inference with partial activations exchanged between a base model user and a LoRA contributor, but also produces cryptographic proofs that the LoRA transforms are valid. First, the base model user processes any submodules that do not require LoRA directly on local hardware, sending partial activations only when a submodule contains LoRA-related layers. These exchanged activations, shown conceptually in Figure~\ref{fig:zklora_3steps}, correspond to “Base Acts” from the base model user and “LoRA Acts” from the LoRA contributor. Figure~\ref{fig:remote-lora-flow} also provides a fine-grained, computational perspective of what occurs when a submodule interfaces with remote LoRA weights.
 
-\texttt{ZKLoRA} compiles an ONNX model (with LoRA included) into a constraint circuit. The user’s partial activations feed the circuit as inputs:
+Once the multi-party inference completes, the LoRA contributor shifts to a proof generation phase. At this stage, each LoRA module is compiled into a constraint system describing the LoRA transformations, and a key setup procedure yields the proving key, verification key, and possibly a structured reference string if the underlying zero-knowledge scheme requires one. The contributor then creates a “witness” by running partial activations through these constraints and finally produces the proof files. This entire flow is summarized in Algorithm~\ref{alg:zklora_concise}, where Step 1 covers the multi-party inference, Step 2 addresses proof generation, and Step 3 handles the final verification check.
 
-\paragraph{(1) Circuit Compilation.} 
-We parse the LoRA-augmented layers, producing a cryptographic circuit capturing each parameter operation. 
+Once the proof generation is done, the base model user receives each proof and runs a fast verification procedure, typically requiring about 1--2 seconds per module. As Figure~\ref{fig:remote-lora-flow} suggests, this does not require the LoRA contributor to reveal the actual low-rank matrices. Instead, the contributor only sends updates and proofs that these updates conform to the declared LoRA transformations. If any single proof fails, the base model user can reject the entire LoRA submission; otherwise, the system is accepted as consistent with the underlying base model. This design reflects the synergy between LoRA’s parameter-efficiency and zero-knowledge cryptographic protocols: LoRA significantly shrinks the parameter footprint being proven, while the zero-knowledge aspect maintains confidentiality of the contributor’s proprietary weights. By merging these ideas, \texttt{ZKLoRA} enables trust-driven collaboration across decentralized infrastructures, contract-based training, and other scenarios where proof-of-correctness is essential but the LoRA code remains private. Our approach also builds on incremental verification concepts \cite{valiant2008incrementally} and advanced proof systems such as Nova \cite{kothapalli2022nova} and HyperNova \cite{kothapalli2024hypernova}, which allow us to scale proofs to large neural networks. Ultimately, this combination provides a practical pipeline for parameter-efficient fine-tuning while verifying correctness in a succinct and minimally intrusive manner.
 
-\paragraph{(2) Key Setup.} 
-A settings file, proving key, and verification key are generated. A structured reference string (SRS) may also be needed.
 
-\paragraph{(3) Witness Creation.}
-The LoRA Contributor runs the partial activations through the circuit, tracking all wire values in a “witness.” 
 
-\paragraph{(4) Proof.}
-Using the witness plus proving key, the LoRA Contributor constructs a proof. 
+\begin{algorithm}[H]
+\caption{ZKLoRA Pseudocode}
+\label{alg:zklora_concise}
+\begin{algorithmic}[1]
 
-\paragraph{(5) Verification per Module.}
-Each LoRA module’s proof is tested with the verification key, taking \textbf{1--2 seconds}. This minimal overhead is \texttt{ZKLoRA}’s main advantage for frequent or large-scale checks.
+\Require \textit{BaseModel} (public), \textit{LoRAModel} (private), \textit{Data}
+\Ensure Verified outputs or \texttt{Reject}
+
+\Statex
+
+\State \textbf{Step 1: Multi-Party Inference}
+\For{each submodule $s$ in \textit{BaseModel}}
+  \If{$s$ \textbf{contains} LoRA layers}
+    \State \emph{(a)} run multi-party inference with LoRA Contributor for submodule $s$
+  \Else
+    \State \emph{(b)} run local inference on submodule $s$ (no remote calls)
+  \EndIf
+\EndFor
+
+\Statex
+
+\State \textbf{Step 2: Proof Generation}
+\For{each LoRA module $m$ in \textit{LoRAModel}}
+  \State \textbf{(1) Circuit Compilation:} parse LoRA-augmented layers, produce cryptographic circuit
+  \State \textbf{(2) Key Setup:} generate settings, proving key, verification key, and SRS if needed
+  \State \textbf{(3) Witness Creation:} run partial activations through circuit, record wire values
+  \State \textbf{(4) Proof:} construct zero-knowledge proof $\mathcal{P}_m$ for module $m$
+\EndFor
+
+\Statex
+
+\State \textbf{Step 3: Verification}
+\For{each proof $\mathcal{P}_m$}
+  \If{\texttt{Verify}($\mathcal{P}_m$) fails}
+    \State \textbf{return} \texttt{Reject}
+  \EndIf
+\EndFor
+
+\State \textbf{return} Verified outputs
+
+\end{algorithmic}
+\end{algorithm}
+
+
 
 %------------------------------------------
 % 4. RELATED WORK
