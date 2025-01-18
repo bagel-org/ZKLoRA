@@ -1,15 +1,13 @@
 ## ZKLoRA: Efficient Zero-Knowledge Proofs for LoRA Verification
 
-Parameter-efficient fine-tuning (PEFT) methods, such as Low-Rank Adaptation (LoRA), have revolutionized how large-scale language models are specialized for new tasks. These approaches reduce the computational and memory overhead drastically compared to full fine-tuning, making them highly efficient and practical. However, real-world deployment often faces a **trust dilemma**:
+[![Twitter Follow](https://img.shields.io/twitter/follow/bagelopenAI?style=social)](https://twitter.com/bagelopenAI)
 
-1. **Verification by the Base Model User**: The base model user needs to verify that LoRA parameters are genuinely derived from and compatible with their base model, without compromising the privacy of those parameters.
-2. **Protection for the LoRA Contributor**: The contributor invests resources in fine-tuning and needs assurance of fair compensation while keeping their proprietary LoRA weights private.
+Low-Rank Adaptation (LoRA) is a widely adopted method for customizing large-scale language models. In distributed, untrusted training environments, an open source base model user may want to use LoRA weights created by an external contributor, leading to two requirements:
 
-**ZKLoRA** addresses this dilemma using **zero-knowledge proofs** to securely verify LoRA updates without exposing the parameters themselves. Our approach:
+1. **Base Model User Verification**: The user must confirm that the LoRA weights are effective when paired with the intended base model.
+2. **LoRA Contributor Protection**: The contributor must keep their proprietary LoRA weights private until compensation is assured.
 
-- Enables **secure proof** that a LoRA update was derived from a specific base model
-- Uses **polynomial commitments** and **succinct ZK proofs** to verify each LoRA module in just 1-2 seconds
-- Scales efficiently to handle multiple LoRA modules, even for multi-billion parameter models
+**ZKLoRA** is a zero-knowledge verification protocol that relies on polynomial commitments, succinct proofs, and multi-party inference to verify LoRA–base model compatibility without exposing LoRA weights.
 
 ### Key Performance Results
 
@@ -18,30 +16,23 @@ Our benchmarks show:
 - Practical scaling with number of LoRA modules (e.g., 80+ modules for 70B parameter models)
 - Efficient handling of varying LoRA sizes (from 24K to 327K parameters per module)
 
-### ZKLoRA + Multi-Party Inference (MPI)
+### Multi-Party Inference (MPI) Architecture
 
-We apply ZKLoRA to a **multi-party inference** scenario, where:
-- **User A** (LoRA contributor) holds LoRA-augmented submodules.
-- **User B** (base model user) has the large base model.
-- They **collaborate** on inference while ensuring the LoRA computations remain hidden, and **A** can generate zero-knowledge proofs of the LoRA inference correctness.
-
-**After** the inference run, **A** creates proof artifacts offline (e.g., `.onnx`, `.json`, plus the proof files) and **B** can download them to locally verify that the LoRA computations were performed faithfully.
-
----
+In our multi-party inference scenario:
+- **User A** (LoRA contributor) holds LoRA-augmented submodules
+- **User B** (base model user) has the large base model
+- They collaborate on inference while keeping LoRA computations hidden
+- **A** generates zero-knowledge proofs of computation correctness
+- **B** can verify these proofs offline using provided artifacts
 
 ## Quick Usage Instructions
 
-Below are **two** sample scripts illustrating multi-party inference with proof generation. **A** is the LoRA contributor, **B** is the base model user.
-
 ### 1. LoRA Provider Side (User A)
 
-Use `lora_contributor_sample_script.py` (or an equivalent script in your project) to:
-
-1. **Host** the LoRA submodules on a specific IP & port.
-2. Listen for requests from **B** during inference (e.g., forward pass submodules).
-3. Collect the submodule inputs, generate proof artifacts once inference ends, and store them locally in an output folder.
-
-A minimal sample script might look like:
+Use `lora_contributor_sample_script.py` to:
+- Host LoRA submodules
+- Handle inference requests
+- Generate proof artifacts
 
 ```python
 import argparse
@@ -76,20 +67,13 @@ if __name__ == "__main__":
     main()
 ```
 
-When **B** calls “end_inference,” this script synchronously finalizes proof generation and stores proof artifacts (e.g., in `a-out/`). **A** can then share or host these files for **B** to download and verify offline.
-
 ### 2. Base Model User Side (User B)
 
 Use `base_model_user_sample_script.py` to:
-
-1. Load the original base model from `from_pretrained`.
-2. Connect to **A**’s submodules (via IP & port).
-3. “Patch” the relevant submodules with remote LoRA calls.
-4. Perform a forward pass to get token-level loss (or any needed inference).
-5. Call “end_inference” so **A** can generate proofs locally. 
-6. **B** then retrieves the proof files from **A** by an out-of-band transfer (e.g., scp or HTTP).
-
-A minimal script:
+- Load and patch the base model
+- Connect to A's submodules
+- Perform inference
+- Trigger proof generation
 
 ```python
 import argparse
@@ -120,13 +104,9 @@ if __name__=="__main__":
     main()
 ```
 
-**That’s it**—once B calls `client.end_inference()`, **A** does the proof generation. B obtains those proof files from the `a-out/` folder by some external means (scp, HTTP, etc.) and can verify them locally.
+### 3. Proof Verification
 
----
-
-## Verifying Proof Files Locally
-
-Once **B** has accessed the proof artifacts from **A** (for example, the files in `a-out/`), the next step is to run a **verification script** that calls `batch_verify_proofs`. Here’s a sample `verify_proofs.py`:
+Use `verify_proofs.py` to validate the proof artifacts:
 
 ```python
 #!/usr/bin/env python3
@@ -166,17 +146,6 @@ def main():
 if __name__ == "__main__":
     main()
 ```
-
-This script uses `batch_verify_proofs(...)` to:
-
-1. **Scan** for `.pf` proof files in `--proof_dir`.
-2. For each proof, **resolve** the associated settings, verification key, and SRS paths.
-3. Call the underlying `ezkl.verify(...)` method to confirm each proof is valid.
-4. Print out how many proofs were verified and how long the process took.
-
-You can set `--verbose` for extra logs about verification timing and success/failure messages.
-
----
 
 ## Summary
 
