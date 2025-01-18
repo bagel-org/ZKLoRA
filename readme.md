@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="paper/figs/bagel-logo.png" alt="ZKLoRA Logo" width="200"/>
+  <img src="paper/figs/bagel-logo.png" alt="Bagel Logo" width="200"/>
 </p>
 
 <p align="center">
@@ -13,6 +13,16 @@
 </p>
 
 ## ZKLoRA: Efficient Zero-Knowledge Proofs for LoRA Verification
+
+## Table of Contents
+- [ZKLoRA: Efficient Zero-Knowledge Proofs for LoRA Verification](#zklora-efficient-zero-knowledge-proofs-for-lora-verification)
+  - [Key Performance Results](#key-performance-results)
+  - [Multi-Party Inference (MPI) Architecture](#multi-party-inference-mpi-architecture)
+- [Quick Usage Instructions](#quick-usage-instructions)
+  - [1. LoRA Provider Side (User A)](#1-lora-provider-side-user-a)
+  - [2. Base Model User Side (User B)](#2-base-model-user-side-user-b)
+  - [3. Proof Verification](#3-proof-verification)
+- [Summary](#summary)
 
 Low-Rank Adaptation (LoRA) is a widely adopted method for customizing large-scale language models. In distributed, untrusted training environments, an open source base model user may want to use LoRA weights created by an external contributor, leading to two requirements:
 
