@@ -26,3 +26,4 @@ nohup.out
 *.out
 *.synctex.gz
 *.toc
+.DS_Store
