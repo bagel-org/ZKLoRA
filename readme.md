@@ -1,6 +1,10 @@
-## ZKLoRA: Efficient Zero-Knowledge Proofs for LoRA Verification
+<p align="center">
+  <img src="paper/figs/bagel-logo.png" alt="ZKLoRA Logo" width="200"/>
+</p>
 
 [![Twitter Follow](https://img.shields.io/twitter/follow/bagelopenAI?style=social)](https://twitter.com/bagelopenAI)
+
+## ZKLoRA: Efficient Zero-Knowledge Proofs for LoRA Verification
 
 Low-Rank Adaptation (LoRA) is a widely adopted method for customizing large-scale language models. In distributed, untrusted training environments, an open source base model user may want to use LoRA weights created by an external contributor, leading to two requirements:
 
