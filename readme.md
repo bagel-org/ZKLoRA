@@ -23,6 +23,8 @@
   - [2. Base Model User Side (User B)](#2-base-model-user-side-user-b)
   - [3. Proof Verification](#3-proof-verification)
 - [Summary](#summary)
+- [Credits](#credits)
+- [License](#license)
 
 Low-Rank Adaptation (LoRA) is a widely adopted method for customizing large-scale language models. In distributed, untrusted training environments, an open source base model user may want to use LoRA weights created by an external contributor, leading to two requirements:
 
@@ -178,6 +180,19 @@ if __name__ == "__main__":
 - Scales efficiently to handle multiple LoRA modules in production environments
 
 Future work includes adding polynomial commitments for base model activations and supporting multi-contributor LoRA scenarios.
+
+## Credits
+
+ZKLoRA builds upon several excellent open source libraries:
+
+- **[PEFT](https://github.com/huggingface/peft)**: Parameter-Efficient Fine-Tuning library by Hugging Face
+- **[Transformers](https://github.com/huggingface/transformers)**: State-of-the-art Natural Language Processing by Hugging Face
+- **[dusk-merkle](https://github.com/dusk-network/dusk-merkle)**: Merkle tree implementation in Rust
+- **[BLAKE3](https://github.com/BLAKE3-team/BLAKE3)**: Cryptographic hash function
+- **[EZKL](https://github.com/zkonduit/ezkl)**: Zero-knowledge proof system for neural networks
+- **[ONNX Runtime](https://github.com/microsoft/onnxruntime)**: Cross-platform ML model inference
+
+We are grateful to the maintainers and contributors of these projects for their valuable work.
 
 ## License
 
