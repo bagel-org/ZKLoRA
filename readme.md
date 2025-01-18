@@ -3,6 +3,10 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/bagelopenai/zklora">
+    <img src="https://img.shields.io/github/stars/bagelopenai/zklora?style=social" alt="GitHub stars"/>
+  </a>
+
   <a href="https://twitter.com/bagelopenAI">
     <img src="https://img.shields.io/twitter/follow/bagelopenAI?style=social" alt="Twitter Follow"/>
   </a>
