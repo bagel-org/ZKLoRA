@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/bagelopenai/zklora">
+  <a href="https://github.com/bagel-org/zklora">
     <img src="https://img.shields.io/github/stars/bagelopenai/zklora?style=social" alt="GitHub stars"/>
   </a>
 
