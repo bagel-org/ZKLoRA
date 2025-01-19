@@ -4,13 +4,22 @@
 
 <p align="center">
   <a href="https://twitter.com/bagelopenAI">
-    <img src="https://img.shields.io/twitter/follow/bagelopenAI?style=social" alt="Twitter Follow"/>
+    <img src="https://img.shields.io/twitter/follow/bagelopenAI?style=flat-square" alt="Twitter Follow"/>
   </a>
   
   <a href="https://blog.bagel.net">
-    <img src="https://img.shields.io/badge/Follow%20on-Substack-orange?style=social&logo=substack" alt="Substack Follow"/>
+    <img src="https://img.shields.io/badge/Follow%20on-Substack-orange?style=flat-square&logo=substack" alt="Substack Follow"/>
+  </a>
+  
+  <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+    <img src="https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg?style=flat-square" alt="License"/>
   </a>
 </p>
+
+<h1 align="center">ZKLoRA</h1>
+<h3 align="center">Efficient Zero-Knowledge Proofs for LoRA Verification</h3>
+
+<hr>
 
 ## ZKLoRA: Efficient Zero-Knowledge Proofs for LoRA Verification
 
@@ -21,14 +30,15 @@ Low-Rank Adaptation (LoRA) is a widely adopted method for customizing large-scal
 
 To solve this, we created **ZKLoRA** a zero-knowledge verification protocol that relies on polynomial commitments, succinct proofs, and multi-party inference to verify LoRA–base model compatibility without exposing LoRA weights.
 
-## Quick Usage Instructions
+<h2 align="center">Quick Usage Instructions</h2>
+
+<details>
+<summary><strong>1. LoRA Contributor Side (User A)</strong></summary>
 
 First, install ZKLoRA using pip:
 ```bash
 pip install zklora
 ```
-
-### 1. LoRA Contributor Side (User A)
 
 Use `lora_contributor_sample_script.py` to:
 - Host LoRA submodules
@@ -68,7 +78,10 @@ if __name__ == "__main__":
     main()
 ```
 
-### 2. Base Model User Side (User B)
+</details>
+
+<details>
+<summary><strong>2. Base Model User Side (User B)</strong></summary>
 
 Use `base_model_user_sample_script.py` to:
 - Load and patch the base model
@@ -105,7 +118,10 @@ if __name__=="__main__":
     main()
 ```
 
-### 3. Proof Verification
+</details>
+
+<details>
+<summary><strong>3. Proof Verification</strong></summary>
 
 Use `verify_proofs.py` to validate the proof artifacts:
 
@@ -148,35 +164,51 @@ if __name__ == "__main__":
     main()
 ```
 
-## Code Structure
+</details>
+
+<hr>
+
+<h2 align="center">Code Structure</h2>
 
 For detailed information about the codebase organization and implementation details, see [Code Structure](src/zklora/README.md).
 
-## Summary
+<h2 align="center">Summary</h2>
 
-- **ZKLoRA** enables trust-minimized LoRA verification through zero-knowledge proofs
-- Achieves **1-2 second verification** per module, even for billion-parameter models
-- Supports **multi-party inference** with secure activation exchange
-- Maintains **complete privacy** of LoRA weights while ensuring compatibility
-- Scales efficiently to handle multiple LoRA modules in production environments
+<table>
+<tr>
+<td>✓</td><td><strong>Trust-Minimized Verification:</strong> Zero-knowledge proofs enable secure LoRA validation</td>
+</tr>
+<tr>
+<td>✓</td><td><strong>Rapid Verification:</strong> 1-2 second processing per module, even for billion-parameter models</td>
+</tr>
+<tr>
+<td>✓</td><td><strong>Secure Multi-Party Inference:</strong> Protected activation exchange between parties</td>
+</tr>
+<tr>
+<td>✓</td><td><strong>Complete Privacy:</strong> LoRA weights remain confidential while ensuring compatibility</td>
+</tr>
+<tr>
+<td>✓</td><td><strong>Production Ready:</strong> Efficiently scales to handle multiple LoRA modules</td>
+</tr>
+</table>
 
 Future work includes adding polynomial commitments for base model activations and supporting multi-contributor LoRA scenarios.
 
-## Credits
+<h2 align="center">Credits</h2>
 
-ZKLoRA builds upon several excellent open source libraries:
+ZKLoRA is built upon these outstanding open source projects:
 
-- **[PEFT](https://github.com/huggingface/peft)**: Parameter-Efficient Fine-Tuning library by Hugging Face
-- **[Transformers](https://github.com/huggingface/transformers)**: State-of-the-art Natural Language Processing by Hugging Face
-- **[dusk-merkle](https://github.com/dusk-network/dusk-merkle)**: Merkle tree implementation in Rust
-- **[BLAKE3](https://github.com/BLAKE3-team/BLAKE3)**: Cryptographic hash function
-- **[EZKL](https://github.com/zkonduit/ezkl)**: Zero-knowledge proof system for neural networks
-- **[ONNX Runtime](https://github.com/microsoft/onnxruntime)**: Cross-platform ML model inference
+| Project | Description |
+|---------|-------------|
+| [PEFT](https://github.com/huggingface/peft) | Parameter-Efficient Fine-Tuning library by Hugging Face |
+| [Transformers](https://github.com/huggingface/transformers) | State-of-the-art Natural Language Processing |
+| [dusk-merkle](https://github.com/dusk-network/dusk-merkle) | Merkle tree implementation in Rust |
+| [BLAKE3](https://github.com/BLAKE3-team/BLAKE3) | Cryptographic hash function |
+| [EZKL](https://github.com/zkonduit/ezkl) | Zero-knowledge proof system for neural networks |
+| [ONNX Runtime](https://github.com/microsoft/onnxruntime) | Cross-platform ML model inference |
 
-We are grateful to the maintainers and contributors of these projects for their valuable work.
+<hr>
 
-## License
-
-This project is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License - see the [LICENSE](LICENSE) file for details. This means you are free to use, share, and adapt the work for non-commercial purposes, as long as you give appropriate credit and distribute your contributions under the same license.
-
-[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC%20BY--NC--SA%204.0-lightgrey.svg)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
+<p align="center">
+<sub>Licensed under Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International</sub>
+</p>
