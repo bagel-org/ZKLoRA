@@ -34,7 +34,7 @@
 \begin{abstract}
   Low-Rank Adaptation (LoRA) is a widely adopted method for customizing large-scale language models. In distributed, untrusted training environments, an open source base model user may want to use LoRA weights created by an external contributor, leading to two requirements: (1) the base model user must confirm that the LoRA weights are effective when paired with the intended base model, and (2) the LoRA contributor must keep their proprietary weights private until compensation is assured.
 
-  We present \textbf{ZKLoRA}, a zero-knowledge verification protocol that relies on polynomial commitments, succinct proofs, and multi-party inference to verify LoRA–base model compatibility without exposing LoRA weights. ZKLoRA produces \emph{deterministic} correctness guarantees and validates each LoRA module in \textbf{only 1--2 seconds} on statge of the art large language models. This low-latency approach enables nearly real-time verification and promotes secure collaboration among geographically dispersed teams and contract-based training pipelines. The protocol ensures that the delivered LoRA module works as claimed, safeguarding the contributor’s intellectual property while providing the base model user with verification of compatibility and lineage.
+  We present \textbf{ZKLoRA}, a zero-knowledge verification protocol that relies on succinct proofs and multi-party inference to verify LoRA–base model compatibility without exposing LoRA weights. ZKLoRA produces \emph{deterministic} correctness guarantees and validates each LoRA module in \textbf{only 1--2 seconds} on state-of-the-art large language models. This low-latency approach enables nearly real-time verification and promotes secure collaboration among geographically dispersed teams and contract-based training pipelines. The protocol ensures that the delivered LoRA module works as claimed, safeguarding the contributor’s intellectual property while providing the base model user with verification of compatibility and lineage.
 \end{abstract}
 
 %------------------------------------------
@@ -44,7 +44,7 @@
 Large Language Models (LLMs) have attained remarkable success \cite{brown2020language, devlin2018bert}, but verifying fine-tuned modifications such as LoRA \cite{hu2021lora} in an untrusted, distributed training environment can be difficult when the updated weights must remain private. 
 Traditionally, one might re-run an entire forward pass or inspect thousands of parameters to ensure correctness, which is infeasible for massive models. 
 \texttt{ZKLoRA} addresses this by generating a zero-knowledge proof of correctness for each LoRA module, guaranteeing that the private LoRA genuinely fits the base model. 
-Crucially, \textbf{the verification stage for each LoRA module} in \texttt{ZKLoRA} remains about 1--2 seconds, even at scales of multi-billion parameter, state of the art large language base models.
+Crucially, \textbf{the verification stage for each LoRA module} in \texttt{ZKLoRA} remains about 1--2 seconds, even at scales of multi-billion parameter, state-of-the-art large language base models.
 
 %------------------------------------------
 % 1. PRELIMINARY RESULTS
@@ -53,7 +53,9 @@ Crucially, \textbf{the verification stage for each LoRA module} in \texttt{ZKLoR
 
 We benchmarked \texttt{ZKLoRA} across several LLMs and smaller models with different numbers of LoRA modules. 
 Our central question is how verification times, as well as settings and proof generation times, grow with \textbf{the number of LoRA modules}, while also considering each LoRA's average parameter size. 
-Figure~\ref{fig:verify_vs_numlora} and Table~\ref{tab:settings_proof} detail this trade-off. \footnote{Note that the number of LoRA modules in a given model is not purely a function of the number of layers -- it is also a choice of which weight matrices within each layer is targeted. For example, just targeting one matrix per layer (ie the Query matrix in the Attention Block) will yeild one LoRA per layer. Conversely, targeting the Query, Key, and Value matrices yields three matrices per layer and makes the total number of LoRAs $3 \times num$\_$layers$.}
+Figure~\ref{fig:verify_vs_numlora} and Table~\ref{tab:settings_proof} detail this trade-off.\footnotemark[2]
+
+\footnotetext[2]{Note that the number of LoRA modules in a given model is not purely a function of the number of layers -- it is also a choice of which weight matrices within each layer is targeted. For example, just targeting one matrix per layer (ie the Query matrix in the Attention Block) will yeild one LoRA per layer. Conversely, targeting the Query, Key, and Value matrices yields three matrices per layer and makes the total number of LoRAs $3 \times num$\_$layers$.}
 
 \begin{figure}[ht]
     \centering
@@ -81,9 +83,9 @@ mistralai/Mixtral-8x7B-Instruct-v0.1 & 32 & 327680 & 86.1 & 73.7 \\
 
 From Figure~\ref{fig:verify_vs_numlora}, we see that models with a higher LoRA count (e.g., 80 modules for a large 70B model) can indeed lead to larger total verification time overall. However, the slope remains modest due to \texttt{ZKLoRA}’s succinct design. For instance, even if each module is verified individually at around 1--2 seconds, verifying 80 modules can be done in just a few minutes, which is still practical for real-world usage.
 
-Table~\ref{tab:settings_proof} similarly shows that \emph{proof generation} and \emph{settings time} scale with the number of LoRA modules, but also depend heavily on each module’s average size (indicated by larger or smaller dot size). These two steps (proof generation on the LoRA contributor’s side and cryptographic circuit setup) can become more expensive, yet remain feasible in decentralized settings or paid contract relationships. The \emph{Base Model User}, meanwhile, benefits from the relatively short verification overhead.
+Table~\ref{tab:settings_proof} similarly shows that average \emph{proof generation} and \emph{settings time} scale with the size of a LoRA module, which, combined with the number of modules, gives the total times. These two steps (proof generation on the LoRA contributor’s side and cryptographic circuit setup) can become more expensive, yet remain feasible in decentralized settings or paid contract relationships. The \emph{Base Model User}, meanwhile, benefits from the relatively short verification overhead.
 
-Overall, these plots confirm that \texttt{ZKLoRA} can handle multiple LoRA modules with minimal overhead for verifying correctness, emphasizing the viability of repeated or multi-adapter scenarios in large-scale LLM pipelines.
+Overall, these plots confirm that \texttt{ZKLoRA} can handle large-scale implementation of LoRA modules with minimal overhead for verifying correctness, emphasizing the viability of repeated or multi-adapter scenarios in large-scale LLM pipelines.
 
 
 \begin{figure}[ht]
@@ -97,7 +99,7 @@ Overall, these plots confirm that \texttt{ZKLoRA} can handle multiple LoRA modul
       draw,
       rounded corners,
       minimum width=6.2cm,
-      minimum height=2.4cm,
+      minimum height=3.2cm,
       align=center,
       fill=gray!10,
       font=\bfseries
@@ -112,33 +114,39 @@ Overall, these plots confirm that \texttt{ZKLoRA} can handle multiple LoRA modul
       font=\scriptsize
     },
     arrow/.style={->, thick},
+    % Define a style for the vertical arrow labels
+    arrowlabel/.style={
+      font=\footnotesize\sffamily\bfseries,
+      fill=white,
+      text=black,
+      inner sep=1pt
+    }
 ]
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Step 1 BOX (Multi-Party Inference)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\node[stepbox,
-      label={[above=2pt]:{\footnotesize \textbf{Step 1: Multi-Party Inference}}}] (step1) 
-{\vspace{4pt}};  % minimal text inside, slight vertical spacing
+\node[stepbox] (step1) {%
+  \footnotesize \textbf{Step 1: Multi-Party Inference}\\[6pt]
+  \vspace{10pt}
+};
 
-% Inside Step 1: Two sub-blocks horizontally
+% Sub-blocks within Step 1
 \node[subblock,
       label={[font=\scriptsize]above:{Base Model User}},
       anchor=center, 
       xshift=-1.6cm,
-      yshift=-0.4cm] 
-(bmuser) at (step1.center)
+      yshift=-1.0cm] (bmuser) at (step1.center)
 {};
 
 \node[subblock,
       label={[font=\scriptsize]above:{LoRA Contributor}},
       anchor=center, 
       xshift=+1.6cm,
-      yshift=-0.4cm] 
-(lorablk) at (step1.center)
+      yshift=-1.0cm] (lorablk) at (step1.center)
 {};
 
-% Two separate arrows: "Base Acts" & "LoRA Acts"
+% Horizontal arrows in Step 1 (unchanged)
 \draw[arrow] 
   ([yshift=-0.05cm]bmuser.east) 
     to[bend left=20] 
@@ -148,40 +156,49 @@ Overall, these plots confirm that \texttt{ZKLoRA} can handle multiple LoRA modul
 \draw[arrow] 
   ([yshift=-0.25cm]lorablk.west) 
     to[bend right=20] 
-  node[midway, below, yshift=+0.1cm, font=\scriptsize]{LoRA Acts}
+  node[midway, below, yshift=-0.05cm, font=\scriptsize]{LoRA Acts}
   ([yshift=-0.25cm]bmuser.east);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Step 2 BOX (Proof Generation), below step1
+% Step 2 BOX (Proof Generation)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\node[stepbox, fill=orange!15, 
-      label={[above=2pt]:{\footnotesize \textbf{Step 2: Proof Generation}}}, 
-      below=of step1] (step2)
-{\footnotesize LoRA Contributor \\
-Builds Zero-Knowledge Proofs};
+\node[stepbox, fill=orange!15, below=of step1] (step2) {%
+  \footnotesize \textbf{Step 2: Proof Generation}\\[6pt]
+  \footnotesize LoRA Contributor\\
+  Builds Zero-Knowledge Proofs
+};
 
-% Arrow from step1 -> step2 with text "LoRA input/output acts"
-\draw[arrow] (step1.south) -- node[left, xshift=-0.1cm, font=\scriptsize]{LoRA input/output acts} (step2.north);
+% Vertical arrow from Step 1 to Step 2 with new style
+\draw[arrow, shorten >=8pt, shorten <=8pt] (step1.south)
+  -- node[arrowlabel, left, xshift=-0.1cm]{LoRA input/output acts}
+  (step2.north);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Step 3 BOX (Verification), below step2
+% Step 3 BOX (Verification)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\node[stepbox, fill=blue!10, 
-      label={[above=2pt]:{\footnotesize \textbf{Step 3: Verification}}}, 
-      below=of step2] (step3)
-{\footnotesize Base Model User \\
-Verifies each proof};
+\node[stepbox, fill=blue!10, below=of step2] (step3) {%
+  \footnotesize \textbf{Step 3: Verification}\\[6pt]
+  \footnotesize Base Model User\\
+  Verifies each proof
+};
 
-% Arrow from step2 -> step3
-\draw[arrow] (step2.south) -- node[left, font=\scriptsize]{\textit{proof files}} (step3.north);
+% Vertical arrow from Step 2 to Step 3 with new style
+\draw[arrow, shorten >=8pt, shorten <=8pt] (step2.south)
+  -- node[arrowlabel, left, xshift=-0.1cm]{proof files}
+  (step3.north);
 
 \end{tikzpicture}
 \caption{\textbf{Three-Step ZKLoRA Process (Vertical).}
-\textbf{(1)} Base Model User and LoRA Contributor exchange ``Base Acts'' and ``LoRA Acts'' in a full multi-party inference. 
-\textbf{(2)} The LoRA Contributor generates cryptographic proofs for correctness. 
+\textbf{(1)} Base Model User and LoRA Contributor exchange “Base Acts” and “LoRA Acts” in a multi-party inference.
+\textbf{(2)} The LoRA Contributor generates cryptographic proofs for correctness.
 \textbf{(3)} The Base Model User verifies these proofs, ensuring correct LoRA alignment without revealing private adapter weights.}
 \label{fig:zklora_3steps}
 \end{figure}
+
+
+
+
+
 
 
 
