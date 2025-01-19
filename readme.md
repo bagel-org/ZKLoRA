@@ -32,8 +32,7 @@ To solve this, we created **ZKLoRA** a zero-knowledge verification protocol that
 
 <h2 align="center">Quick Usage Instructions</h2>
 
-<details>
-<summary><strong>1. LoRA Contributor Side (User A)</strong></summary>
+### 1. LoRA Contributor Side (User A)
 
 First, install ZKLoRA using pip:
 ```bash
@@ -78,10 +77,7 @@ if __name__ == "__main__":
     main()
 ```
 
-</details>
-
-<details>
-<summary><strong>2. Base Model User Side (User B)</strong></summary>
+### 2. Base Model User Side (User B)
 
 Use `base_model_user_sample_script.py` to:
 - Load and patch the base model
@@ -118,10 +114,7 @@ if __name__=="__main__":
     main()
 ```
 
-</details>
-
-<details>
-<summary><strong>3. Proof Verification</strong></summary>
+### 3. Proof Verification
 
 Use `verify_proofs.py` to validate the proof artifacts:
 
@@ -163,8 +156,6 @@ def main():
 if __name__ == "__main__":
     main()
 ```
-
-</details>
 
 <hr>
 
