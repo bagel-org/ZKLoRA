@@ -39,3 +39,10 @@ nohup.out
 *.out
 *.synctex.gz
 *.toc
+
+# Python package distribution
+*.egg-info/
+dist/
+build/
+*.egg
+*.whl
