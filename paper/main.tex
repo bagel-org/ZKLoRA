@@ -13,11 +13,15 @@
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta, positioning, calc, fit}
 
-\title{\textbf{ZKLoRA: Efficient Zero-Knowledge Proofs for LoRA Verification}}
+\title{
+    \vspace*{-1.5em}
+    \rule{\textwidth}{0.4pt} \\[0.4em]
+    \textbf{ZKLoRA: Efficient Zero-Knowledge Proofs for LoRA Verification} \\[0.4em]
+    \rule{\textwidth}{0.4pt}
+}
 \author{ \includegraphics[height=8em]{figs/bagel-logo-bw.png} \\
     \textbf{Bidhan Roy, Peter Potash, Marcos Villagra} \\
     Bagel Research Team\footnotemark[1] \\
-    \texttt{bidhan@bagel.net, peter@bagel.net, marcos@bagel.net}
 }
 \date{\today}
 
@@ -25,23 +29,22 @@
 
 \maketitle
 
-\footnotetext[1]{Bagel is a research lab, making open source AI monetizable.}
+\footnotetext[1]{Bagel is a research lab, using cryptography to make open source AI monetizable.}
 
 \begin{abstract}
-    Parameter-efficient fine-tuning (PEFT) techniques, including Low-Rank Adaptation (LoRA), are widely adopted to customize large-scale language models in distributed training environments. A base model user may want to use LoRA weights developed by an external contributor, creating two requirements: the base model user must verify that the LoRA weights are effective when combined with the designated open-source model, and the contributor must protect proprietary parameters until compensation is assured.
-    
-    We propose \textbf{ZKLoRA}, a zero-knowledge protocol that leverages polynomial commitments, succinct proofs, and advanced cryptographic designs to confirm LoRA–base model compatibility \emph{without} disclosing private LoRA weights. Our evaluations show that verification requires only \textbf{1--2 seconds} per LoRA module for typical large models. This short verification time enables trust-driven collaboration across decentralized infrastructures and contract-based training pipelines, ensuring that the delivered LoRA is valid while preserving the contributor’s intellectual property.
+  Low-Rank Adaptation (LoRA) is a widely adopted method for customizing large-scale language models. In distributed, untrusted training environments, an open source base model user may want to use LoRA weights created by an external contributor, leading to two requirements: (1) the base model user must confirm that the LoRA weights are effective when paired with the intended base model, and (2) the LoRA contributor must keep their proprietary weights private until compensation is assured.
+
+  We present \textbf{ZKLoRA}, a zero-knowledge verification protocol that relies on polynomial commitments, succinct proofs, and multi-party inference to verify LoRA–base model compatibility without exposing LoRA weights. ZKLoRA produces \emph{deterministic} correctness guarantees and validates each LoRA module in \textbf{only 1--2 seconds} on statge of the art large language models. This low-latency approach enables nearly real-time verification and promotes secure collaboration among geographically dispersed teams and contract-based training pipelines. The protocol ensures that the delivered LoRA module works as claimed, safeguarding the contributor’s intellectual property while providing the base model user with verification of compatibility and lineage.
 \end{abstract}
 
 %------------------------------------------
 % INTRO: emphasize verification challenge & clarify it's per-module
 %------------------------------------------
 \section{Introduction}
-Large Language Models (LLMs) have attained remarkable success \cite{brown2020language, devlin2018bert}, but verifying fine-tuned modifications such as LoRA \cite{hu2021lora} can be difficult when the updated weights must remain private. 
+Large Language Models (LLMs) have attained remarkable success \cite{brown2020language, devlin2018bert}, but verifying fine-tuned modifications such as LoRA \cite{hu2021lora} in an untrusted, distributed training environment can be difficult when the updated weights must remain private. 
 Traditionally, one might re-run an entire forward pass or inspect thousands of parameters to ensure correctness, which is infeasible for massive models. 
-\texttt{ZKLoRA} addresses this by generating a zero-knowledge proof of correctness for each LoRA module, guaranteeing that the private LoRA genuinely fits the public base model. 
-Crucially, \textbf{the verification stage for each LoRA module} in \texttt{ZKLoRA} remains about 1--2 seconds, even at scales of multi-billion parameter base models. 
-This rapid, per-module check allows the Base Model User to efficiently, independently verify the compatibility of the private LoRA parameters.
+\texttt{ZKLoRA} addresses this by generating a zero-knowledge proof of correctness for each LoRA module, guaranteeing that the private LoRA genuinely fits the base model. 
+Crucially, \textbf{the verification stage for each LoRA module} in \texttt{ZKLoRA} remains about 1--2 seconds, even at scales of multi-billion parameter, state of the art large language base models.
 
 %------------------------------------------
 % 1. PRELIMINARY RESULTS
