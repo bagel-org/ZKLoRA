@@ -46,3 +46,4 @@ dist/
 build/
 *.egg
 *.whl
+.pypirc
