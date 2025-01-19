@@ -49,11 +49,48 @@ You can install ZKLoRA using pip:
 pip install zklora
 ```
 
+                         ZKLoRA Protocol Flow
+┌────────────────────────────────────────────────────────────────┐
+│                    Step 1: Multi-Party Inference               │
+├────────────────────────────────────────────────────────────────┤
+│                                                               │
+│ Base Model User (B)                    LoRA Contributor (A)   │
+│ ┌──────────────┐         Base         ┌──────────────┐       │
+│ │   Model B    │ ─────Activations────▶│    LoRA A    │       │
+│ │  (Public)    │                      │  (Private)    │       │
+│ └──────────────┘ ◀─────Updates───────┐└──────────────┘       │
+│                                       │                       │
+└───────────────────────────────────────┼───────────────────────┘
+                                        │
+                                        ▼
+┌────────────────────────────────────────────────────────────────┐
+│                    Step 2: Proof Generation                    │
+├────────────────────────────────────────────────────────────────┤
+│                                                               │
+│                  LoRA Contributor generates:                  │
+│  • Cryptographic circuit for each LoRA module                │
+│  • Zero-knowledge proofs using activation records            │
+│  • Proving/verification keys and reference strings           │
+│                                                               │
+└───────────────────────────────────────┬───────────────────────┘
+                                        │
+                                        ▼
+┌────────────────────────────────────────────────────────────────┐
+│                      Step 3: Verification                      │
+├────────────────────────────────────────────────────────────────┤
+│                                                               │
+│               Base Model User verifies proofs:                │
+│  • Fast verification (1-2 seconds per module)                 │
+│  • No exposure of private LoRA weights                       │
+│  • Ensures compatibility with base model                      │
+│                                                               │
+└────────────────────────────────────────────────────────────────┘
+
 ### Key Performance Results
 
 Our benchmarks show:
 - Verification time of 1-2 seconds per LoRA module
-- Practical scaling with number of LoRA modules (e.g., 80+ modules for 70B parameter models)
+- Practical scaling with large number of LoRA modules for SOTA models
 - Efficient handling of varying LoRA sizes (from 24K to 327K parameters per module)
 
 ### Multi-Party Inference (MPI) Architecture
