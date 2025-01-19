@@ -29,7 +29,7 @@
   - [Key Performance Results](#key-performance-results)
   - [Multi-Party Inference (MPI) Architecture](#multi-party-inference-mpi-architecture)
 - [Quick Usage Instructions](#quick-usage-instructions)
-  - [1. LoRA Provider Side (User A)](#1-lora-provider-side-user-a)
+  - [1. LoRA Contributor Side (User A)](#1-lora-contributor-side-user-a)
   - [2. Base Model User Side (User B)](#2-base-model-user-side-user-b)
   - [3. Proof Verification](#3-proof-verification)
 - [Code Structure](#code-structure)
@@ -42,78 +42,16 @@ Low-Rank Adaptation (LoRA) is a widely adopted method for customizing large-scal
 1. **Base Model User Verification**: The user must confirm that the LoRA weights are effective when paired with the intended base model.
 2. **LoRA Contributor Protection**: The contributor must keep their proprietary LoRA weights private until compensation is assured.
 
-**ZKLoRA** is a zero-knowledge verification protocol that relies on polynomial commitments, succinct proofs, and multi-party inference to verify LoRA–base model compatibility without exposing LoRA weights.
+To solve this, we created **ZKLoRA** a zero-knowledge verification protocol that relies on polynomial commitments, succinct proofs, and multi-party inference to verify LoRA–base model compatibility without exposing LoRA weights.
 
-You can install ZKLoRA using pip:
+## Quick Usage Instructions
+
+First, install ZKLoRA using pip:
 ```bash
 pip install zklora
 ```
 
-                         ZKLoRA Protocol Flow
-┌────────────────────────────────────────────────────────────────┐
-│                    Step 1: Multi-Party Inference               │
-├────────────────────────────────────────────────────────────────┤
-│                                                               │
-│ Base Model User (B)                    LoRA Contributor (A)   │
-│ ┌──────────────┐         Base         ┌──────────────┐       │
-│ │   Model B    │ ─────Activations────▶│    LoRA A    │       │
-│ │  (Public)    │                      │  (Private)    │       │
-│ └──────────────┘ ◀─────Updates───────┐└──────────────┘       │
-│                                       │                       │
-└───────────────────────────────────────┼───────────────────────┘
-                                        │
-                                        ▼
-┌────────────────────────────────────────────────────────────────┐
-│                    Step 2: Proof Generation                    │
-├────────────────────────────────────────────────────────────────┤
-│                                                               │
-│                  LoRA Contributor generates:                  │
-│  • Cryptographic circuit for each LoRA module                │
-│  • Zero-knowledge proofs using activation records            │
-│  • Proving/verification keys and reference strings           │
-│                                                               │
-└───────────────────────────────────────┬───────────────────────┘
-                                        │
-                                        ▼
-┌────────────────────────────────────────────────────────────────┐
-│                      Step 3: Verification                      │
-├────────────────────────────────────────────────────────────────┤
-│                                                               │
-│               Base Model User verifies proofs:                │
-│  • Fast verification (1-2 seconds per module)                 │
-│  • No exposure of private LoRA weights                       │
-│  • Ensures compatibility with base model                      │
-│                                                               │
-└────────────────────────────────────────────────────────────────┘
-
-### Key Performance Results
-
-Our benchmarks show:
-- Verification time of 1-2 seconds per LoRA module
-- Practical scaling with large number of LoRA modules for SOTA models
-- Efficient handling of varying LoRA sizes (from 24K to 327K parameters per module)
-
-Detailed performance metrics are available in `results/proof_metrics.csv`, showing:
-- Tests across various models (DistilGPT2, GPT2, Llama variants, Mixtral)
-- LoRA sizes ranging from 24K to 327K parameters per module
-- Comprehensive timing data for:
-  - Settings generation (~40-86ms per module)
-  - Witness computation (~12-30ms per module)
-  - Proof generation (~31-73ms per module)
-  - Verification (~0.7-1.5s per module)
-
-### Multi-Party Inference (MPI) Architecture
-
-In our multi-party inference scenario:
-- **User A** (LoRA contributor) holds LoRA-augmented submodules
-- **User B** (base model user) has the large base model
-- They collaborate on inference while keeping LoRA computations hidden
-- **A** generates zero-knowledge proofs of computation correctness
-- **B** can verify these proofs offline using provided artifacts
-
-## Quick Usage Instructions
-
-### 1. LoRA Provider Side (User A)
+### 1. LoRA Contributor Side (User A)
 
 Use `lora_contributor_sample_script.py` to:
 - Host LoRA submodules
