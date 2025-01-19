@@ -3,6 +3,10 @@
 </p>
 
 <p align="center">
+  Monetizable open source AI
+</p>
+
+<p align="center">
   <a href="https://github.com/bagel-org/zklora">
     <img src="https://img.shields.io/github/stars/bagelopenai/zklora?style=social&scale=2" width="150" alt="GitHub stars"/>
   </a>
@@ -28,6 +32,7 @@
   - [1. LoRA Provider Side (User A)](#1-lora-provider-side-user-a)
   - [2. Base Model User Side (User B)](#2-base-model-user-side-user-b)
   - [3. Proof Verification](#3-proof-verification)
+- [Code Structure](#code-structure)
 - [Summary](#summary)
 - [Credits](#credits)
 - [License](#license)
@@ -38,6 +43,11 @@ Low-Rank Adaptation (LoRA) is a widely adopted method for customizing large-scal
 2. **LoRA Contributor Protection**: The contributor must keep their proprietary LoRA weights private until compensation is assured.
 
 **ZKLoRA** is a zero-knowledge verification protocol that relies on polynomial commitments, succinct proofs, and multi-party inference to verify LoRA–base model compatibility without exposing LoRA weights.
+
+You can install ZKLoRA using pip:
+```bash
+pip install zklora
+```
 
 ### Key Performance Results
 
@@ -176,6 +186,10 @@ def main():
 if __name__ == "__main__":
     main()
 ```
+
+## Code Structure
+
+For detailed information about the codebase organization and implementation details, see [Code Structure](src/zklora/README.md).
 
 ## Summary
 
