@@ -1,29 +1,41 @@
-venv
-data
+# Python
+*venv
+__pycache__
+*.log
+
+# Development environments
+.vscode
+.DS_Store
+
+# Environment and settings
+.env
 settings.json
 *.key
-.env
+
+# Build and compilation
+target
+Cargo.lock
+
+# Data and model files
+data
+lora_onnx_params
+intermediate_activations
+proof_artifacts
 *.ezkl
 *.srs
 input.json
 witness.json
 proof.json
-target
-Cargo.lock
-.vscode
-__pycache__
-proof_artifacts
-lora_onnx_params
-intermediate_activations
+
+# Output files
 nohup.out
-*.log
+
+# LaTeX
 *.aux
 *.bbl
 *.blg
 *.fdb_latexmk
 *.fls
-*.log
 *.out
 *.synctex.gz
 *.toc
-.DS_Store
