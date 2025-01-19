@@ -31,4 +31,4 @@ dependencies = [
 "Bug Tracker" = "https://github.com/bagel-org/zklora/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/zklora"] 
+packages = ["src/zklora"]
