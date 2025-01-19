@@ -3,16 +3,6 @@
 </p>
 
 <p align="center">
-  Monetizable open source AI
-</p>
-
-<p align="center">
-  <a href="https://github.com/bagel-org/zklora">
-    <img src="https://img.shields.io/github/stars/bagelopenai/zklora?style=social&scale=2" width="150" alt="GitHub stars"/>
-  </a>
-</p>
-
-<p align="center">
   <a href="https://twitter.com/bagelopenAI">
     <img src="https://img.shields.io/twitter/follow/bagelopenAI?style=social" alt="Twitter Follow"/>
   </a>
