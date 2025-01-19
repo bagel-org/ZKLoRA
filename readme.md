@@ -93,6 +93,15 @@ Our benchmarks show:
 - Practical scaling with large number of LoRA modules for SOTA models
 - Efficient handling of varying LoRA sizes (from 24K to 327K parameters per module)
 
+Detailed performance metrics are available in `results/proof_metrics.csv`, showing:
+- Tests across various models (DistilGPT2, GPT2, Llama variants, Mixtral)
+- LoRA sizes ranging from 24K to 327K parameters per module
+- Comprehensive timing data for:
+  - Settings generation (~40-86ms per module)
+  - Witness computation (~12-30ms per module)
+  - Proof generation (~31-73ms per module)
+  - Verification (~0.7-1.5s per module)
+
 ### Multi-Party Inference (MPI) Architecture
 
 In our multi-party inference scenario:
