@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="paper/figs/bagel-logo.png" alt="Bagel Logo" width="200"/>
+  <img src="bagel-logo.png" alt="Bagel Logo" width="200"/>
 </p>
 
 <p align="center">
@@ -39,7 +39,7 @@ First, install ZKLoRA using pip:
 pip install zklora
 ```
 
-Use `lora_contributor_sample_script.py` to:
+Use `src/scripts/lora_contributor_sample_script.py` to:
 - Host LoRA submodules
 - Handle inference requests
 - Generate proof artifacts
@@ -79,7 +79,7 @@ if __name__ == "__main__":
 
 ### 2. Base Model User Side (User B)
 
-Use `base_model_user_sample_script.py` to:
+Use `src/scripts/base_model_user_sample_script.py` to:
 - Load and patch the base model
 - Connect to A's submodules
 - Perform inference
@@ -116,7 +116,7 @@ if __name__=="__main__":
 
 ### 3. Proof Verification
 
-Use `verify_proofs.py` to validate the proof artifacts:
+Use `src/scripts/verify_proofs.py` to validate the proof artifacts:
 
 ```python
 #!/usr/bin/env python3
