@@ -4,16 +4,16 @@ build-backend = "hatchling.build"
 
 [project]
 name = "zklora"
-version = "0.1.0"
+version = "0.1.1"
 authors = [
     { name = "Bagel", email = "team@bagel.net" },
 ]
 description = "A Python library for zero-knowledge proof generation and verification"
-readme = "README.md"
+readme = "../README.md"  # Update path to point to root README
 requires-python = ">=3.8"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: Creative Commons Attribution-NonCommercial-ShareAlike 4.0",
+    "License :: Other/Proprietary License",
     "Operating System :: OS Independent",
 ]
 dependencies = [
@@ -31,4 +31,4 @@ dependencies = [
 "Bug Tracker" = "https://github.com/bagel-org/zklora/issues"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/zklora"]
+packages = ["zklora"]  # Update path since we're now in src/ 
