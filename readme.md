@@ -118,4 +118,88 @@ if __name__=="__main__":
 
 Use `src/scripts/verify_proofs.py` to validate the proof artifacts:
 
+```python
+#!/usr/bin/env python3
+"""
+Verify LoRA proof artifacts in a given directory.
+
+Example usage:
+  python verify_proofs.py --proof_dir a-out --verbose
+"""
+
+import argparse
+from zklora import batch_verify_proofs
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Verify LoRA proof artifacts in a given directory."
+    )
+    parser.add_argument(
+        "--proof_dir",
+        type=str,
+        default="proof_artifacts",
+        help="Directory containing proof files (.pf), plus settings, vk, srs."
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Print more details during verification."
+    )
+    args = parser.parse_args()
+
+    total_verify_time, num_proofs = batch_verify_proofs(
+        proof_dir=args.proof_dir,
+        verbose=args.verbose
+    )
+    print(f"Done verifying {num_proofs} proofs. Total time: {total_verify_time:.2f}s")
+
+if __name__ == "__main__":
+    main()
 ```
+
+<hr>
+
+<h2 align="center">Code Structure</h2>
+
+For detailed information about the codebase organization and implementation details, see [Code Structure](src/zklora/README.md).
+
+<h2 align="center">Summary</h2>
+
+<table>
+<tr>
+<td>✓</td><td><strong>Trust-Minimized Verification:</strong> Zero-knowledge proofs enable secure LoRA validation</td>
+</tr>
+<tr>
+<td>✓</td><td><strong>Rapid Verification:</strong> 1-2 second processing per module, even for billion-parameter models</td>
+</tr>
+<tr>
+<td>✓</td><td><strong>Multi-Party Inference:</strong> Protected activation exchange between parties</td>
+</tr>
+<tr>
+<td>✓</td><td><strong>Complete Privacy:</strong> LoRA weights remain confidential while ensuring compatibility</td>
+</tr>
+<tr>
+<td>✓</td><td><strong>Production Ready:</strong> Efficiently scales to handle multiple LoRA modules</td>
+</tr>
+</table>
+
+Future work includes adding polynomial commitments for base model activations and supporting multi-contributor LoRA scenarios.
+
+<h2 align="center">Credits</h2>
+
+ZKLoRA is built upon these outstanding open source projects:
+
+| Project | Description |
+|---------|-------------|
+| [PEFT](https://github.com/huggingface/peft) | Parameter-Efficient Fine-Tuning library by Hugging Face |
+| [Transformers](https://github.com/huggingface/transformers) | State-of-the-art Natural Language Processing |
+| [dusk-merkle](https://github.com/dusk-network/dusk-merkle) | Merkle tree implementation in Rust |
+| [BLAKE3](https://github.com/BLAKE3-team/BLAKE3) | Cryptographic hash function |
+| [EZKL](https://github.com/zkonduit/ezkl) | Zero-knowledge proof system for neural networks |
+| [ONNX Runtime](https://github.com/microsoft/onnxruntime) | Cross-platform ML model inference |
+
+<hr>
+
+<p align="center">
+<sub>Licensed under Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International</sub>
+</p>
