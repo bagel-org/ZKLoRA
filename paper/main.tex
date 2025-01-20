@@ -51,11 +51,10 @@ Crucially, \textbf{the verification stage for each LoRA module} in \texttt{ZKLoR
 %------------------------------------------
 \section{Preliminary Results}
 
-We benchmarked \texttt{ZKLoRA} across several LLMs and smaller models with different numbers of LoRA modules. 
-Our central question is how verification times, as well as settings and proof generation times, grow with \textbf{the number of LoRA modules}, while also considering each LoRA's average parameter size. 
+We benchmarked \texttt{ZKLoRA} across several LLMs and smaller models with different numbers of LoRA modules. The input for inference is a batch of size 3 with sequence length 5. Our central question is how verification times, as well as settings and proof generation times, grow with \textbf{the number of LoRA modules}, while also considering each LoRA's average parameter size. 
 Figure~\ref{fig:verify_vs_numlora} and Table~\ref{tab:settings_proof} detail this trade-off.\footnotemark[2]
 
-\footnotetext[2]{Note that the number of LoRA modules in a given model is not purely a function of the number of layers -- it is also a choice of which weight matrices within each layer is targeted. For example, just targeting one matrix per layer (ie the Query matrix in the Attention Block) will yeild one LoRA per layer. Conversely, targeting the Query, Key, and Value matrices yields three matrices per layer and makes the total number of LoRAs $3 \times num$\_$layers$.}
+\footnotetext[2]{Note that the number of LoRA modules in a given model is not purely a function of the number of layers -- it is also a choice of which weight matrices within each layer is targeted. For example, just targeting one matrix per layer (ie the Query matrix in the Attention Block) will yield one LoRA per layer. Conversely, targeting the Query, Key, and Value matrices yields three matrices per layer and makes the total number of LoRAs $3 \times num$\_$layers$.}
 
 \begin{figure}[ht]
     \centering
@@ -306,8 +305,8 @@ Once the proof generation is done, the base model user receives each proof and r
 
 
 \begin{algorithm}[H]
-\caption{ZKLoRA Pseudocode}
-\label{alg:zklora_concise}
+\caption{\texttt{ZKLoRA} Pseudocode}
+\label{alg:zklora}
 \begin{algorithmic}[1]
 
 \Require \textit{BaseModel} (public), \textit{LoRAModel} (private), \textit{Data}
@@ -346,8 +345,6 @@ Once the proof generation is done, the base model user receives each proof and r
 \State \textbf{return} Verified outputs
 
 \end{algorithmic}
-\caption{\texttt{ZKLoRA} Pseudocode }
-\label{alg:zklora}
 \end{algorithm}
 
 
@@ -363,7 +360,7 @@ Low-Rank Adaptation (LoRA) \cite{hu2021lora} is a technique for parameter-effici
 Beyond the clear advantage of reduced storage, LoRA also facilitates swapping multiple domain-specific adapters into a single base model, making it straightforward to maintain separate skill sets without instantiating an entire new copy of the model. These adapters can target specialized tasks (e.g., medical or legal text) with minimal overhead, driving LoRA’s widespread adoption. Yet verifying that a proprietary LoRA truly aligns with a base model (without revealing the adapter) remains problematic—precisely the gap \texttt{ZKLoRA} fills.
 
 \subsection{Incrementally Verifiable Computation}
-In a decentralized world, trust is a resource that is hard to achieve. In decentralized computation, we need to make sure the computations are both done and done correctly. In a seminal paper by Valiant (2008) \cite{valiant2008incrementally}, it was shown that proofs of knowledge can be used to assert the correct execution of general computations. That is, if $M$ is a machine that runs for $t$ steps producing a sequence of configurations $c_0,c_1,\dots,c_t$, then there exist an efficient and effective way to produce a computationally sound proof for the computation $c_0  \xrightarrow{t} c_t$. This idea is referred to as Incrementally Verifiable Computation or IVC.
+In a decentralized world, trust is a resource that is hard to achieve. In decentralized computation, we need to make sure the computations are both done and done correctly. In a seminal paper by Valiant (2008) \cite{valiant2008incrementally}, it was shown that proofs of knowledge can be used to assert the correct execution of general computations. That is, if $M$ is a machine that runs for $t$ steps producing a sequence of configurations $c_0,c_1,\dots,c_t$, then there exists an efficient and effective way to produce a computationally sound proof for the computation $c_0  \xrightarrow{t} c_t$. This idea is referred to as Incrementally Verifiable Computation or IVC.
 
 The main goal of IVC is to produce compact, updatable proofs of correctness for a sequence of computations, so that each new step can be verified on its own while building on the guarantees of previous steps. This technique significantly reduces the verification overhead for long or evolving computations, which is invaluable in scenarios like decentralized networks, outsourced computation, and any application requiring frequent correctness checks.
 
@@ -376,7 +373,7 @@ HyperNova \cite{kothapalli2024hypernova} is a novel recursive argument system op
 %------------------------------------------
 \section{Conclusion}
 
-\texttt{ZKLoRA} provides a fast, robust mechanism to ensure that private LoRA modules remain consistent with a large base model. Our evaluations indicate that each LoRA module’s correctness can be verified in less than 2 seconds, even for multi-billion-parameter LLMs. This efficiency bridges the gap between privacy-preserving LoRA development and practical, real-time validation in large-scale deployments. In terms of future work, the most relevant and immediate work would be adding polynomial commitments of the base model's activations (those that are sent as input to the LoRA contributor). This would take us one step closer to providing end-to-end verifiability of inference computation for LoRA-finetuned models.  Other avenues of expansion could be integrating multi-contributor LoRAs, advanced zero-knowledge proofs for further performance gains, or partial data-privacy frameworks to shield user inputs as well as LoRA parameters. 
+\texttt{ZKLoRA} provides a fast, robust mechanism to ensure that private LoRA modules remain effective when combined with a large base model. Our evaluations indicate that each LoRA module’s forward computation can be verified in less than 2 seconds, even for multi-billion-parameter LLMs. This efficiency bridges the gap between privacy-preserving LoRA development and practical, real-time validation in large-scale deployments. In terms of future work, the most relevant and immediate work would be adding polynomial commitments of the base model's activations (those that are sent as input to the LoRA Contributor). This would take us one step closer to providing end-to-end verifiability of inference computation for LoRA-finetuned models.  Other avenues of expansion could be integrating multi-contributor LoRAs, advanced zero-knowledge proofs for further performance gains, or partial data-privacy frameworks to shield user inputs as well as LoRA parameters. 
 
 \bibliographystyle{plain}
 \bibliography{references}
