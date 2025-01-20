@@ -173,7 +173,7 @@ For detailed information about the codebase organization and implementation deta
 <td>✓</td><td><strong>Rapid Verification:</strong> 1-2 second processing per module, even for billion-parameter models</td>
 </tr>
 <tr>
-<td>✓</td><td><strong>Secure Multi-Party Inference:</strong> Protected activation exchange between parties</td>
+<td>✓</td><td><strong>Multi-Party Inference:</strong> Protected activation exchange between parties</td>
 </tr>
 <tr>
 <td>✓</td><td><strong>Complete Privacy:</strong> LoRA weights remain confidential while ensuring compatibility</td>
