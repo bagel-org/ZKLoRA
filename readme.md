@@ -205,7 +205,7 @@ ZKLoRA is built upon these outstanding open source projects:
 If you use ZKLoRA in your research, please cite:
 
 ```bibtex
-@article{roy2024zklora,
+@article{roy2025zklora,
   title={ZKLoRA: Efficient Zero-Knowledge Proofs for LoRA Verification},
   author={Roy, Bidhan and Potash, Peter and Villagra, Marcos},
   journal={Bagel Research Team},
