@@ -209,7 +209,7 @@ If you use ZKLoRA in your research, please cite:
   title={ZKLoRA: Efficient Zero-Knowledge Proofs for LoRA Verification},
   author={Roy, Bidhan and Potash, Peter and Villagra, Marcos},
   journal={Bagel Research Team},
-  year={2024}
+  year={2025}
 }
 ```
 
