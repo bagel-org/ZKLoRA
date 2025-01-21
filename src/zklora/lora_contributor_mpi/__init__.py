@@ -38,11 +38,10 @@ class LoRAServer:
         self.out_dir = out_dir
         os.makedirs(self.out_dir, exist_ok=True)
 
-        # 1) Load model config, disable cache => no 'past_key_values'
-        config = AutoConfig.from_pretrained(base_model_name)
-        config.use_cache = False
-        base_model = AutoModelForCausalLM.from_config(config)
+        # 1) Load model, disable cache => no 'past_key_values'
+        base_model = AutoModelForCausalLM.from_pretrained(base_model_name)
         base_model.config.use_cache = False
+
         base_model.eval()
 
         # 2) Load LoRA
