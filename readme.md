@@ -30,7 +30,7 @@ Low-Rank Adaptation (LoRA) is a widely adopted method for customizing large-scal
 
 To solve this, we created **ZKLoRA** a zero-knowledge verification protocol that relies on polynomial commitments, succinct proofs, and multi-party inference to verify LoRA–base model compatibility without exposing LoRA weights. With ZKLoRA, verification of LoRA modules takes just 1-2 seconds, even for state-of-the-art language models with tens of billions of parameters.
 
-For detailed information about this research, please refer to our paper: `paper.pdf`
+For detailed information about this research, please refer to our paper: [paper.pdf](./paper.pdf)
 
 <h2 align="center">Quick Usage Instructions</h2>
 
@@ -199,6 +199,19 @@ ZKLoRA is built upon these outstanding open source projects:
 | [BLAKE3](https://github.com/BLAKE3-team/BLAKE3) | Cryptographic hash function |
 | [EZKL](https://github.com/zkonduit/ezkl) | Zero-knowledge proof system for neural networks |
 | [ONNX Runtime](https://github.com/microsoft/onnxruntime) | Cross-platform ML model inference |
+
+<h2 align="center">Citation</h2>
+
+If you use ZKLoRA in your research, please cite:
+
+```bibtex
+@article{roy2024zklora,
+  title={ZKLoRA: Efficient Zero-Knowledge Proofs for LoRA Verification},
+  author={Roy, Bidhan and Potash, Peter and Villagra, Marcos},
+  journal={Bagel Research Team},
+  year={2024}
+}
+```
 
 <hr>
 
