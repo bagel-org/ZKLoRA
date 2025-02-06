@@ -30,7 +30,7 @@ Low-Rank Adaptation (LoRA) is a widely adopted method for customizing large-scal
 
 To solve this, we created **ZKLoRA** a zero-knowledge verification protocol that relies on polynomial commitments, succinct proofs, and multi-party inference to verify LoRA–base model compatibility without exposing LoRA weights. With ZKLoRA, verification of LoRA modules takes just 1-2 seconds, even for state-of-the-art language models with tens of billions of parameters.
 
-For detailed information about this research, please refer to our paper: `paper.pdf`
+For detailed information about this research, please refer to [our paper](https://arxiv.org/abs/2501.13965).
 
 <h2 align="center">Quick Usage Instructions</h2>
 
