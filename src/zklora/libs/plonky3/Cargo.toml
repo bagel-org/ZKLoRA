@@ -1,0 +1,7 @@
+[package]
+name = "plonky3"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+pyo3 = { version = "0.19", features = ["extension-module"] }
