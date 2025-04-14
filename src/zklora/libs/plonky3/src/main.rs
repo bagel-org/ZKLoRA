@@ -1,6 +1,17 @@
 use p3_matrix::dense::RowMajorMatrix;
 use p3_matrix::Matrix;
 
+/// Performs matrix multiplication between two matrices of u16 elements.
+/// 
+/// # Arguments
+/// * `a` - First matrix (m x n)
+/// * `b` - Second matrix (n x p)
+/// 
+/// # Returns
+/// A new matrix (m x p) containing the result of the multiplication
+/// 
+/// # Panics
+/// Panics if the number of columns in `a` does not match the number of rows in `b`
 fn matrix_multiply(a: &RowMajorMatrix<u16>, b: &RowMajorMatrix<u16>) -> RowMajorMatrix<u16> {
     assert_eq!(a.width(), b.height(), "Matrix dimensions must be compatible for multiplication");
     
