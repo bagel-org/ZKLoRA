@@ -5,21 +5,6 @@ edition = "2021"
 
 [dependencies]
 pyo3 = { version = "0.24.1", features = ["extension-module"] }
-# Core cryptographic primitives
+p3-matrix = "0.2.0"
+rand = "0.8.5"
 ark-ff = "0.5.0"
-ark-std = "0.5.0"
-ark-poly = "0.5.0"
-ark-serialize = "0.5.0"
-# For polynomial commitments and FRI
-ark-poly-commit = "0.5.0"
-# For field arithmetic and polynomial operations
-ff = "0.13.0"
-group = "0.13.0"
-# For serialization
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-# For error handling
-thiserror = "2.0.12"
-# For logging
-log = "0.4"
-env_logger = "0.11.8"
