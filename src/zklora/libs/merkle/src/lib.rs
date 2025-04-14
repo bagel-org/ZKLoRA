@@ -65,7 +65,7 @@ pub fn insert_values(values: Vec<f64>) -> String {
 }
 
 #[pymodule]
-fn merkle(_py: Python, m: &PyModule) -> PyResult<()> {
+fn merkle(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(insert_values, m)?)?;
     Ok(())
 }
