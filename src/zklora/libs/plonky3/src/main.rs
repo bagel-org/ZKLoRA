@@ -147,7 +147,4 @@ fn main() {
     let result = matrix_multiply(&matrix_a, &matrix_b);
     println!("Matrix multiplication result: {:?}", result);
 
-    println!("\nThis is a basic example of matrix multiplication.");
-    println!("In a full implementation, you would use field elements to generate a trace for ZK proofs.");
-    println!("The trace would contain all computation steps for verification.");
 }
