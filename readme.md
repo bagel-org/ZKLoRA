@@ -96,11 +96,26 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--host_a", default="127.0.0.1")
     parser.add_argument("--port_a", type=int, default=30000)
+    parser.add_argument(
+        "--contributors",
+        nargs="*",
+        help="Additional LoRA contributors as host:port",
+    )
     parser.add_argument("--base_model", default="distilgpt2")
     parser.add_argument("--combine_mode", choices=["replace","add_delta"], default="add_delta")
     args = parser.parse_args()
 
-    client = BaseModelClient(args.base_model, args.host_a, args.port_a, args.combine_mode)
+    contributors = [(args.host_a, args.port_a)]
+    if args.contributors:
+        for item in args.contributors:
+            host, port = item.split(":")
+            contributors.append((host, int(port)))
+
+    client = BaseModelClient(
+        base_model=args.base_model,
+        combine_mode=args.combine_mode,
+        contributors=contributors,
+    )
     client.init_and_patch()
 
     # Run inference => triggers remote LoRA calls on A
@@ -159,6 +174,23 @@ if __name__ == "__main__":
     main()
 ```
 
+### 4. Polynomial Commitment of Activations
+
+Use helper functions to commit to activation files:
+
+```python
+from zklora import commit_activations, verify_commitment
+
+commitment = commit_activations("activations.json")
+assert verify_commitment("activations.json", commitment)
+```
+
+Run unit tests with:
+
+```bash
+pytest
+```
+
 <hr>
 
 <h2 align="center">Code Structure</h2>
@@ -185,7 +217,7 @@ For detailed information about the codebase organization and implementation deta
 </tr>
 </table>
 
-Future work includes adding polynomial commitments for base model activations and supporting multi-contributor LoRA scenarios.
+Polynomial commitments for base model activations and multi-contributor LoRA scenarios are supported starting in version 0.1.2.
 
 <h2 align="center">Credits</h2>
 
