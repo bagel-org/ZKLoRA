@@ -24,6 +24,7 @@ dependencies = [
     "onnx>=1.14.0",
     "onnxruntime>=1.15.0",
     "ezkl>=5.0.0",
+    "blake3>=0.4.0",
 ]
 
 [project.urls]

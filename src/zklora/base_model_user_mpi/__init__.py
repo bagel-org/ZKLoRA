@@ -6,7 +6,7 @@ import os
 
 import torch
 import torch.nn as nn
-from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
+from transformers import AutoModelForCausalLM, AutoTokenizer
 
 class BaseModelToLoRAComm:
     def __init__(self, host_a="127.0.0.1", port_a=30000):
@@ -78,18 +78,26 @@ class RemoteLoRAWrappedModule(nn.Module):
         return out_t
 
 class BaseModelClient:
-    def __init__(self, base_model="distilgpt2", host_a="127.0.0.1", port_a=30000, combine_mode="replace"):
-        # turn off cache => no 'past_key_values'
-        #config = AutoConfig.from_pretrained(base_model)
-        #config.use_cache = False
+    def __init__(
+        self,
+        base_model: str = "distilgpt2",
+        host_a: str = "127.0.0.1",
+        port_a: int = 30000,
+        combine_mode: str = "replace",
+        contributors: list[tuple[str, int]] | None = None,
+    ):
+        """Client for interacting with one or more LoRA contributors."""
         self.model = AutoModelForCausalLM.from_pretrained(base_model)
-        
+
         self.model.config.use_cache = False
         self.model.eval()
 
         self.tokenizer = AutoTokenizer.from_pretrained(base_model)
 
-        self.comm = BaseModelToLoRAComm(host_a, port_a)
+        if contributors is None:
+            contributors = [(host_a, port_a)]
+
+        self.comms = [BaseModelToLoRAComm(h, p) for h, p in contributors]
         self.combine_mode = combine_mode
 
     def _navigate(self, mod: nn.Module, parts: list[str]) -> nn.Module:
@@ -106,22 +114,24 @@ class BaseModelClient:
         return mod
 
     def init_and_patch(self):
-        submods = self.comm.init_request()
-        print("[B] injection points =>", submods)
-        for full_name in submods:
-            if not full_name.strip():
-                print("[B] skipping empty submodule name.")
-                continue
-            try:
-                path_parts = full_name.split(".")
-                *parents, child = path_parts
-                m = self._navigate(self.model, parents)
-                orig_sub = getattr(m, child)
-                wrapped = RemoteLoRAWrappedModule(full_name, orig_sub, self.comm, self.combine_mode)
-                setattr(m, child, wrapped)
-                print(f"[B] Patched submodule '{full_name}'.")
-            except Exception as e:
-                print(f"[B] Could not patch '{full_name}': {e}")
+        """Query all contributors for injection points and patch the model."""
+        for comm in self.comms:
+            submods = comm.init_request()
+            print("[B] injection points =>", submods)
+            for full_name in submods:
+                if not full_name.strip():
+                    print("[B] skipping empty submodule name.")
+                    continue
+                try:
+                    path_parts = full_name.split(".")
+                    *parents, child = path_parts
+                    m = self._navigate(self.model, parents)
+                    orig_sub = getattr(m, child)
+                    wrapped = RemoteLoRAWrappedModule(full_name, orig_sub, comm, self.combine_mode)
+                    setattr(m, child, wrapped)
+                    print(f"[B] Patched submodule '{full_name}' from {comm.host_a}:{comm.port_a}.")
+                except Exception as e:
+                    print(f"[B] Could not patch '{full_name}': {e}")
 
     def forward_loss(self, text: str) -> float:
         enc = self.tokenizer(text, return_tensors="pt")
@@ -131,6 +141,7 @@ class BaseModelClient:
         return out.loss.item()
 
     def end_inference(self):
-        # 1) request end_inference => server finalizes proofs locally => returns ack
-        resp = self.comm.end_inference()
-        print("[B] end_inference => got ack:", resp)
+        """Notify all contributors that inference is finished."""
+        for comm in self.comms:
+            resp = comm.end_inference()
+            print("[B] end_inference => got ack from", comm.host_a, comm.port_a, ":", resp)
