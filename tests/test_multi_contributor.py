@@ -21,6 +21,7 @@ class DummyModel(nn.Module):
         super().__init__()
         self.sub1 = DummySub()
         self.sub2 = DummySub()
+        self.config = types.SimpleNamespace(use_cache=True)
 
     def eval(self):
         pass
