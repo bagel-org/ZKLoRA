@@ -1,6 +1,6 @@
-# ZKLoRA Source Code Structure
+# zkLoRA Source Code Structure
 
-This directory contains the core implementation of ZKLoRA. Here's a detailed overview of the key components and their interactions.
+This directory contains the core implementation of zkLoRA. Here's a detailed overview of the key components and their interactions.
 
 ## Directory Structure
 
@@ -24,7 +24,7 @@ src/
 
 ### Zero-Knowledge Architecture
 
-The zero-knowledge proof system in ZKLoRA is built on polynomial commitments and succinct proofs. The `zk_proof_generator.py` module orchestrates the proof generation process by:
+The zero-knowledge proof system in zkLoRA is built on polynomial commitments and succinct proofs. The `zk_proof_generator.py` module orchestrates the proof generation process by:
 
 1. Converting LoRA modules to ONNX format using `mpi_lora_onnx_exporter.py`
 2. Computing Merkle roots of model activations via `activations_commit.py`
@@ -52,7 +52,7 @@ The Rust implementation is wrapped with Python bindings in the `libs/merkle` dir
 
 ### Performance Considerations
 
-ZKLoRA achieves its 1-2 second verification time through:
+zkLoRA achieves its 1-2 second verification time through:
 
 - Parallel proof generation for multiple LoRA modules
 - Optimized ONNX conversions that minimize computational overhead

@@ -15,7 +15,7 @@ from peft import PeftModel
 
 # from zklora with the MPI exporter & proof generator
 from ..zk_proof_generator import generate_proofs, resolve_proof_paths
-from ..mpi_lora_onnx_exporter import export_lora_onnx_json_mpi
+from ..mpi_lora_onnx_exporter import export_lora_onnx_json_mpi, export_lora_onnx_json_mpi_optimized
 
 def read_file_as_bytes(path: str) -> bytes:
     with open(path, "rb") as f:
@@ -34,8 +34,9 @@ def strip_prefix(raw_name: str) -> str:
     return name2.strip()
 
 class LoRAServer:
-    def __init__(self, base_model_name: str, lora_model_id: str, out_dir: str):
+    def __init__(self, base_model_name: str, lora_model_id: str, out_dir: str, use_optimization: bool = True):
         self.out_dir = out_dir
+        self.use_optimization = use_optimization
         os.makedirs(self.out_dir, exist_ok=True)
 
         # 1) Load model, disable cache => no 'past_key_values'
@@ -61,11 +62,12 @@ class LoRAServer:
                 self.submodules[sname] = module
 
         self.session_data = {}  # {sub_name => [np arrays]}
+        self.base_activations = {}  # Track base model activations
 
     def list_lora_injection_points(self):
         return list(self.submodules.keys())
 
-    def apply_lora(self, sub_name: str, input_tensor: torch.Tensor):
+    def apply_lora(self, sub_name: str, input_tensor: torch.Tensor, base_activation: np.ndarray = None):
         if sub_name not in self.submodules:
             raise ValueError(f"[LoRAServer] submodule '{sub_name}' not recognized.")
         mod = self.submodules[sub_name]
@@ -74,6 +76,11 @@ class LoRAServer:
             out = mod(input_tensor)
         x_np = input_tensor.cpu().numpy()
         self.session_data.setdefault(sub_name, []).append(x_np)
+        
+        # Store base activation if provided
+        if base_activation is not None:
+            self.base_activations.setdefault(sub_name, []).append(base_activation)
+        
         return out
 
     def finalize_proofs_and_collect(self):
@@ -86,14 +93,34 @@ class LoRAServer:
                 continue
             last_in = arr_list[-1]
             mod = self.submodules[sname]
-            export_lora_onnx_json_mpi(
-                sub_name=sname,
-                x_data=last_in,
-                submodule=mod,
-                output_dir=self.out_dir,
-                verbose=True
-            )
+            
+            # Get base activation if available
+            base_act = None
+            if sname in self.base_activations and self.base_activations[sname]:
+                base_act = self.base_activations[sname][-1]
+            
+            if self.use_optimization and base_act is not None:
+                # Use optimized export with low-rank structure
+                export_lora_onnx_json_mpi_optimized(
+                    sub_name=sname,
+                    x_data=last_in,
+                    submodule=mod,
+                    base_activations=base_act,
+                    output_dir=self.out_dir,
+                    use_optimization=True,
+                    verbose=True
+                )
+            else:
+                # Fall back to original export
+                export_lora_onnx_json_mpi(
+                    sub_name=sname,
+                    x_data=last_in,
+                    submodule=mod,
+                    output_dir=self.out_dir,
+                    verbose=True
+                )
         self.session_data.clear()
+        self.base_activations.clear()
 
         # generate proofs synchronously
         print("[A] Running generate_proofs(...) via asyncio.run(...) in the same thread.")
@@ -158,6 +185,20 @@ class LoRAServerSocket(threading.Thread):
                 arr = req["input_array"]
                 tin = torch.tensor(arr, dtype=torch.float32)
                 out = self.lora_server.apply_lora(sname, tin)
+                resp = {
+                    "response_type":"lora_forward_response",
+                    "output_array": out.cpu().numpy()
+                }
+
+            elif rtype == "lora_forward_optimized":
+                # Handle optimized request with base activations
+                sname = req["submodule_name"]
+                arr = req["input_array"]
+                base_arr = req.get("base_activation", None)
+                tin = torch.tensor(arr, dtype=torch.float32)
+                
+                # Apply LoRA with base activation for optimization
+                out = self.lora_server.apply_lora(sname, tin, base_arr)
                 resp = {
                     "response_type":"lora_forward_response",
                     "output_array": out.cpu().numpy()
