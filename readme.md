@@ -16,19 +16,19 @@
   </a>
 </p>
 
-<h1 align="center">ZKLoRA</h1>
+<h1 align="center">zkLoRA</h1>
 <h3 align="center">Efficient Zero-Knowledge Proofs for LoRA Verification</h3>
 
 <hr>
 
-## ZKLoRA: Efficient Zero-Knowledge Proofs for LoRA Verification
+## zkLoRA: Efficient Zero-Knowledge Proofs for LoRA Verification
 
 Low-Rank Adaptation (LoRA) is a widely adopted method for customizing large-scale language models. In distributed, untrusted training environments, an open source base model user may want to use LoRA weights created by an external contributor, leading to two requirements:
 
 1. **Base Model User Verification**: The user must confirm that the LoRA weights are effective when paired with the intended base model.
 2. **LoRA Contributor Protection**: The contributor must keep their proprietary LoRA weights private until compensation is assured.
 
-To solve this, we created **ZKLoRA** a zero-knowledge verification protocol that relies on polynomial commitments, succinct proofs, and multi-party inference to verify LoRA–base model compatibility without exposing LoRA weights. With ZKLoRA, verification of LoRA modules takes just 1-2 seconds, even for state-of-the-art language models with tens of billions of parameters.
+To solve this, we created **zkLoRA** a zero-knowledge verification protocol that relies on polynomial commitments, succinct proofs, and multi-party inference to verify LoRA–base model compatibility without exposing LoRA weights. With zkLoRA, verification of LoRA modules takes just 1-2 seconds, even for state-of-the-art language models with tens of billions of parameters.
 
 For detailed information about this research, please refer to [our paper](https://arxiv.org/abs/2501.13965).
 
@@ -36,7 +36,7 @@ For detailed information about this research, please refer to [our paper](https:
 
 ### 1. LoRA Contributor Side (User A)
 
-First, install ZKLoRA using pip:
+First, install zkLoRA using pip:
 ```bash
 pip install zklora
 ```
@@ -176,7 +176,7 @@ if __name__ == "__main__":
 
 ### 4. Polynomial Commitment of Activations
 
-ZKLoRA includes a robust polynomial commitment scheme for securely committing to neural network activations without revealing the underlying data. This cryptographic primitive enables privacy-preserving verification of computations.
+zkLoRA includes a robust polynomial commitment scheme for securely committing to neural network activations without revealing the underlying data. This cryptographic primitive enables privacy-preserving verification of computations.
 
 #### Basic Usage
 
@@ -320,7 +320,7 @@ Polynomial commitments for base model activations and multi-contributor LoRA sce
 
 <h2 align="center">Credits</h2>
 
-ZKLoRA is built upon these outstanding open source projects:
+zkLoRA is built upon these outstanding open source projects:
 
 | Project | Description |
 |---------|-------------|
