@@ -61,12 +61,14 @@ class TestLowRankQuantizer:
         quantizer = LowRankQuantizer()
         x = torch.randn(1, 32, 768)
         
-        x_q, scale = quantizer.quantize_activations(x)
+        x_q, scale, zero_point = quantizer.quantize_activations(x)
         
         assert x_q.shape == x.shape
         assert x_q.dtype == np.uint8
         assert np.all(x_q >= 0) and np.all(x_q <= 255)
         assert scale > 0
+        assert isinstance(zero_point, float)
+        assert 0 <= zero_point <= 255
 
 
 @pytest.mark.unit
@@ -376,8 +378,9 @@ def test_quantizer_activation_edge_cases():
     
     # Test with very small values
     x = torch.tensor([[[0.001, -0.001, 0.0]]])
-    x_q, scale = quantizer.quantize_activations(x)
+    x_q, scale, zero_point = quantizer.quantize_activations(x)
     
     assert x_q.dtype == np.uint8
     assert np.all(x_q >= 0) and np.all(x_q <= 1)  # 2^1 - 1 = 1
-    assert scale > 0 
+    assert scale > 0
+    assert isinstance(zero_point, float) 

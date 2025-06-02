@@ -45,13 +45,21 @@ class LowRankQuantizer:
     
     def quantize_activations(
         self, x: torch.Tensor
-    ) -> Tuple[np.ndarray, float]:
+    ) -> Tuple[np.ndarray, float, float]:
         eps = 1e-8
-        scale = max(torch.max(torch.abs(x)).item(), eps) / self.activation_max
+        x_min = torch.min(x).item()
+        x_max = torch.max(x).item()
+        
+        # Calculate scale and zero point for proper unsigned quantization
+        scale = max((x_max - x_min) / self.activation_max, eps)
+        zero_point = -x_min / scale
+        zero_point = max(0, min(self.activation_max, round(zero_point)))
+        
         x_q = torch.clamp(
-            torch.round(x / scale), 0, self.activation_max
+            torch.round(x / scale + zero_point), 0, self.activation_max
         ).to(torch.uint8)
-        return x_q.numpy(), scale
+        
+        return x_q.numpy(), scale, float(zero_point)
 
 
 class LowRankCircuitONNX(nn.Module):
@@ -210,7 +218,7 @@ def export_optimized_lora_circuit(
     
     quantizer = LowRankQuantizer(weight_bits=4, activation_bits=8)
     A_q, B_q, quant_params = quantizer.quantize_weights(A, B)
-    x_q, x_scale = quantizer.quantize_activations(
+    x_q, x_scale, zero_point = quantizer.quantize_activations(
         torch.from_numpy(x_data)
     )
     
@@ -264,7 +272,7 @@ def export_optimized_lora_circuit(
                 'B_scale': float(quant_params['B_scale']),
                 'weight_bits': int(quant_params['weight_bits'])
             },
-            'activation_quantization': {'bits': 8, 'scale': float(x_scale)},
+            'activation_quantization': {'bits': 8, 'scale': float(x_scale), 'zero_point': float(zero_point)},
             'lookup_table': lookup_config_path,
             'batch_lookup': _convert_numpy_types(batch_spec),
             'base_model_commitment': base_commitment,
