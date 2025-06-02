@@ -1,4 +1,23 @@
-numpy
-pytest
-torch
-transformers 
+# Core dependencies
+numpy>=1.21.0
+torch>=1.9.0
+transformers>=4.20.0
+peft>=0.3.0
+ezkl>=0.1.0
+onnx>=1.12.0
+onnxruntime>=1.12.0
+blake3>=0.3.0
+
+# Testing dependencies
+pytest>=7.0.0
+pytest-cov>=4.0.0
+pytest-asyncio>=0.20.0
+pytest-mock>=3.10.0
+pytest-timeout>=2.1.0
+coverage>=7.0.0
+
+# Development dependencies
+black>=22.0.0
+isort>=5.11.0
+flake8>=5.0.0
+mypy>=0.990 

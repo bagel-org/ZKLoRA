@@ -1,15 +1,6 @@
 #!/usr/bin/env python3
-"""
-Example of using optimized zkLoRA with low-rank aware circuits.
 
-This script demonstrates the ~1000x speedup achieved by:
-1. Exploiting low-rank structure (512x)
-2. Using 4-bit quantization with lookups (8x)
-3. Batching lookup operations (3x)
-4. Treating base model as external commitment (40x)
-
-Total theoretical speedup: 512 × 8 × 3 × 40 = 491,520x
-"""
+from __future__ import annotations
 
 import argparse
 import time

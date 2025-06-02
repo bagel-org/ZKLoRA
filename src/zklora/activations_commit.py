@@ -1,28 +1,19 @@
-import merkle
-import json
-import numpy as np
+from __future__ import annotations
 
-def get_merkle_root(activations_path: str) -> str:
-    """
-    Calculate the Merkle root hash of model activations stored in a JSON file.
-    
-    Args:
-        activations_path: Path to JSON file containing model activations under "input_data" key
-        
-    Returns:
-        str: Hexadecimal string of the Merkle root hash, prefixed with "0x"
-    """
-    # Load the intermediate activations from JSON file
-    with open(activations_path, 'r') as f:
-        activations = json.load(f)
+from .polynomial_commit import commit_activations as activations_commitment
+from .polynomial_commit import verify_commitment as activations_verify_commitment
 
-    # Convert nested data to numpy array and flatten
-    flattened_np = np.array(activations["input_data"]).reshape(-1)
-    
-    # Get and return the Merkle root hash
-    return merkle.insert_values(flattened_np.tolist())
+
+def commit_activations(activations_path: str) -> str:
+    """Return polynomial commitment of activations stored in JSON file."""
+    return activations_commitment(activations_path)
+
+
+def verify_commitment(activations_path: str, commitment: str) -> bool:
+    """Verify a polynomial commitment against activations.""" 
+    return activations_verify_commitment(activations_path, commitment)
 
 if __name__ == "__main__":
     activations_path = "intermediate_activations/base_model_model_lm_head.json"
-    merkle_root = get_merkle_root(activations_path)
+    merkle_root = commit_activations(activations_path)
     print("Merkle root:", merkle_root)

@@ -3,6 +3,8 @@ Optimized proof generator for low-rank LoRA circuits.
 Uses custom Halo2 chip definitions and lookup tables.
 """
 
+from __future__ import annotations
+
 import os
 import glob
 import json
@@ -17,7 +19,9 @@ import onnxruntime
 import ezkl
 
 
-def create_optimized_chip_for_model(model_config: Dict, output_dir: str) -> str:
+def create_optimized_chip_for_model(
+    model_config: Dict, output_dir: str
+) -> str:
     """
     Stub function for creating optimized chip configuration.
     In a real implementation, this would generate Halo2 chip definitions.
@@ -51,7 +55,9 @@ class OptimizedProofPaths(NamedTuple):
     lookup_config: str
 
 
-def resolve_optimized_proof_paths(proof_dir: str, base_name: str) -> Optional[OptimizedProofPaths]:
+def resolve_optimized_proof_paths(
+    proof_dir: str, base_name: str
+) -> Optional[OptimizedProofPaths]:
     """Retrieves paths for optimized proof-related files."""
     return OptimizedProofPaths(
         circuit=os.path.join(proof_dir, f"{base_name}.ezkl"),
@@ -82,7 +88,9 @@ async def generate_optimized_proof_single(
         model_config = json.load(f)
     
     # Create optimized chip configuration
-    chip_config_path = create_optimized_chip_for_model(model_config, output_dir)
+    chip_config_path = create_optimized_chip_for_model(
+        model_config, output_dir
+    )
     
     names = resolve_optimized_proof_paths(output_dir, base_name)
     if names is None:
@@ -123,7 +131,9 @@ async def generate_optimized_proof_single(
         ezkl.gen_srs(names.srs, py_args.logrows)
     
     # 4) Setup
-    ezkl.setup(names.circuit, names.verification_key, names.proving_key, names.srs)
+    ezkl.setup(
+        names.circuit, names.verification_key, names.proving_key, names.srs
+    )
     
     settings_time = time.time() - start_time
     
@@ -283,9 +293,9 @@ async def batch_verify_proofs_optimized(
         
         try:
             # Get associated files
-            settings_file = os.path.join(proof_dir, f"{base_name}_optimized_settings.json")
-            vk_file = os.path.join(proof_dir, f"{base_name}_optimized.vk")
-            srs_file = os.path.join(proof_dir, f"{base_name}_optimized.srs")
+            settings_file = os.path.join(proof_dir, f"{base_name}_settings.json")
+            vk_file = os.path.join(proof_dir, f"{base_name}.vk")
+            srs_file = os.path.join(proof_dir, "kzg.srs")  # SRS is shared
             
             # Check if all files exist
             if not all(os.path.exists(f) for f in [settings_file, vk_file, srs_file]):

@@ -3,6 +3,19 @@
 __pycache__
 *.log
 
+# Testing and Coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.tox/
+.nox/
+.cache/
+nosetests.xml
+pytest.xml
+test-results/
+
 # Development environments
 .vscode
 .DS_Store

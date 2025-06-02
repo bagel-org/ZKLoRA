@@ -4,6 +4,8 @@ New code specifically for 'split inference' (MPI) scenario,
 similar to lora_onnx_exporter but with different approach or naming to avoid collisions.
 """
 
+from __future__ import annotations
+
 import os
 import json
 import torch

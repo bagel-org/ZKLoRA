@@ -4,6 +4,8 @@ This chip implements custom gates for efficient low-rank matrix operations
 using lookup tables instead of multiplication gates.
 """
 
+from __future__ import annotations
+
 from typing import List, Dict, Tuple
 import json
 
