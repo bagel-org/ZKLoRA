@@ -101,7 +101,6 @@ def export_lora_onnx_json_mpi(
     B = B_mod.weight.detach().cpu().float()
 
     try:
-        from .mpi_lora_onnx_exporter import normalize_lora_matrices_mpi
         A_fixed, B_fixed, in_dim, rank, out_dim = normalize_lora_matrices_mpi(A, B, x_data)
     except ValueError as e:
         if verbose:
@@ -143,3 +142,51 @@ def export_lora_onnx_json_mpi(
 
     if verbose:
         print(f"[A-mpi] JSON => {json_path}, shape => (1, {total_size})")
+
+
+def export_lora_onnx_json_mpi_optimized(
+    sub_name: str,
+    x_data: np.ndarray,
+    submodule: nn.Module,
+    base_activations: np.ndarray,
+    output_dir: str,
+    use_optimization: bool = True,
+    verbose: bool = False,
+):
+    """
+    Optimized version that exports using low-rank structure.
+    Falls back to original if optimization is disabled.
+    """
+    if not use_optimization:
+        # Fall back to original dense export
+        return export_lora_onnx_json_mpi(
+            sub_name, x_data, submodule, output_dir, verbose
+        )
+    
+    # Use the optimized low-rank aware export
+    from .low_rank_circuit import export_optimized_lora_circuit
+    
+    # Extract LoRA matrices
+    if not (hasattr(submodule, "lora_A") and hasattr(submodule, "lora_B")):
+        if verbose:
+            print(f"[export_optimized] No lora_A/B in submodule '{sub_name}', skipping.")
+        return
+
+    a_keys = list(submodule.lora_A.keys()) if hasattr(submodule.lora_A, "keys") else []
+    if not a_keys:
+        if verbose:
+            print(f"[export_optimized] No adapter keys in submodule.lora_A for '{sub_name}'.")
+        return
+
+    A_mod = submodule.lora_A[a_keys[0]]
+    B_mod = submodule.lora_B[a_keys[0]]
+
+    A = A_mod.weight.detach().cpu().float()
+    B = B_mod.weight.detach().cpu().float()
+    
+    # Use optimized export
+    config = export_optimized_lora_circuit(
+        sub_name, A, B, x_data, base_activations, output_dir, verbose
+    )
+    
+    return config

@@ -27,6 +27,17 @@ class BaseModelToLoRAComm:
         resp = self.send_and_recv(req)
         return resp.get("output_array", None)
 
+    def lora_forward_with_base(self, sub_name, arr, base_arr):
+        """Send both input and base model output for optimized processing"""
+        req = {
+            "request_type": "lora_forward_optimized",
+            "submodule_name": sub_name,
+            "input_array": arr,
+            "base_activation": base_arr
+        }
+        resp = self.send_and_recv(req)
+        return resp.get("output_array", None)
+
     def end_inference(self):
         req = {"request_type": "end_inference"}
         resp = self.send_and_recv(req)#, timeout=600.0)  # might be slower if proof gen is big
@@ -58,18 +69,26 @@ class BaseModelToLoRAComm:
         return resp
 
 class RemoteLoRAWrappedModule(nn.Module):
-    def __init__(self, sub_name, local_sub, comm: BaseModelToLoRAComm, combine_mode="replace"):
+    def __init__(self, sub_name, local_sub, comm: BaseModelToLoRAComm, combine_mode="replace", send_base_activations=True):
         super().__init__()
         self.sub_name = sub_name
         self.local_sub = local_sub
         self.comm = comm
         self.combine_mode = combine_mode
+        self.send_base_activations = send_base_activations
 
     def forward(self, x: torch.Tensor):
         with torch.no_grad():
             base_out = self.local_sub(x)
         arr = x.cpu().numpy()
-        remote_out = self.comm.lora_forward(self.sub_name, arr)
+        
+        # Prepare request with optional base activations
+        if self.send_base_activations:
+            base_act = base_out.cpu().numpy()
+            remote_out = self.comm.lora_forward_with_base(self.sub_name, arr, base_act)
+        else:
+            remote_out = self.comm.lora_forward(self.sub_name, arr)
+            
         if remote_out is None:
             raise RuntimeError(f"[B] submodule '{self.sub_name}' => no output from A.")
         out_t = torch.tensor(remote_out, dtype=torch.float32)
@@ -85,6 +104,7 @@ class BaseModelClient:
         port_a: int = 30000,
         combine_mode: str = "replace",
         contributors: list[tuple[str, int]] | None = None,
+        use_optimization: bool = True,
     ):
         """Client for interacting with one or more LoRA contributors."""
         self.model = AutoModelForCausalLM.from_pretrained(base_model)
@@ -99,6 +119,7 @@ class BaseModelClient:
 
         self.comms = [BaseModelToLoRAComm(h, p) for h, p in contributors]
         self.combine_mode = combine_mode
+        self.use_optimization = use_optimization
 
     def _navigate(self, mod: nn.Module, parts: list[str]) -> nn.Module:
         """
@@ -127,7 +148,10 @@ class BaseModelClient:
                     *parents, child = path_parts
                     m = self._navigate(self.model, parents)
                     orig_sub = getattr(m, child)
-                    wrapped = RemoteLoRAWrappedModule(full_name, orig_sub, comm, self.combine_mode)
+                    wrapped = RemoteLoRAWrappedModule(
+                        full_name, orig_sub, comm, self.combine_mode, 
+                        send_base_activations=self.use_optimization
+                    )
                     setattr(m, child, wrapped)
                     print(f"[B] Patched submodule '{full_name}' from {comm.host_a}:{comm.port_a}.")
                 except Exception as e:

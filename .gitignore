@@ -47,3 +47,6 @@ build/
 *.egg
 *.whl
 .pypirc
+
+# AI Coding - only ignore .cursor directory, not .cursorrules
+.cursor/
