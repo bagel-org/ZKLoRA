@@ -25,9 +25,16 @@ class LowRankQuantizer:
     ) -> Tuple[np.ndarray, np.ndarray, Dict]:
         # Epsilon prevents division by zero in scale computation
         eps = 1e-8
-        A_scale = max(torch.max(torch.abs(A)).item(), eps) / self.weight_max
-        B_scale = max(torch.max(torch.abs(B)).item(), eps) / self.weight_max
         
+        # Better scale computation using percentile-based approach for outlier robustness
+        A_abs_vals = torch.abs(A).flatten()
+        B_abs_vals = torch.abs(B).flatten()
+        
+        # Use 99.9th percentile to ignore outliers while maintaining precision
+        A_scale = max(torch.quantile(A_abs_vals, 0.999).item(), eps) / self.weight_max
+        B_scale = max(torch.quantile(B_abs_vals, 0.999).item(), eps) / self.weight_max
+        
+        # More precise quantization with proper rounding
         A_q = torch.clamp(
             torch.round(A / A_scale), self.weight_min, self.weight_max
         ).to(torch.int8)
@@ -38,6 +45,8 @@ class LowRankQuantizer:
         quant_params = {
             'A_scale': A_scale,
             'B_scale': B_scale,
+            'A_zero_point': 0,  # Symmetric quantization
+            'B_zero_point': 0,  # Symmetric quantization
             'weight_bits': self.weight_bits
         }
         
@@ -47,14 +56,18 @@ class LowRankQuantizer:
         self, x: torch.Tensor
     ) -> Tuple[np.ndarray, float, float]:
         eps = 1e-8
-        x_min = torch.min(x).item()
-        x_max = torch.max(x).item()
         
-        # Calculate scale and zero point for proper unsigned quantization
+        # Use percentile-based approach for better handling of outliers
+        x_flat = x.flatten()
+        x_min = torch.quantile(x_flat, 0.001).item()  # 0.1th percentile
+        x_max = torch.quantile(x_flat, 0.999).item()  # 99.9th percentile
+        
+        # Calculate scale and zero point for optimal range usage
         scale = max((x_max - x_min) / self.activation_max, eps)
         zero_point = -x_min / scale
         zero_point = max(0, min(self.activation_max, round(zero_point)))
         
+        # More precise quantization
         x_q = torch.clamp(
             torch.round(x / scale + zero_point), 0, self.activation_max
         ).to(torch.uint8)
