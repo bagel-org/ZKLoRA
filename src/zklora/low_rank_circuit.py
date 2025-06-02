@@ -9,6 +9,7 @@ import numpy as np
 from typing import Tuple, Dict, List
 import json
 import os
+import re
 
 
 class LowRankQuantizer:
@@ -25,9 +26,10 @@ class LowRankQuantizer:
         
     def quantize_weights(self, A: torch.Tensor, B: torch.Tensor) -> Tuple[np.ndarray, np.ndarray, Dict]:
         """Quantize LoRA matrices A and B to signed 4-bit integers"""
-        # Find scale factors
-        A_scale = torch.max(torch.abs(A)).item() / self.weight_max
-        B_scale = torch.max(torch.abs(B)).item() / self.weight_max
+        # Find scale factors with epsilon to avoid division by zero
+        eps = 1e-8
+        A_scale = max(torch.max(torch.abs(A)).item(), eps) / self.weight_max
+        B_scale = max(torch.max(torch.abs(B)).item(), eps) / self.weight_max
         
         # Quantize
         A_q = torch.clamp(torch.round(A / A_scale), self.weight_min, self.weight_max).to(torch.int8)
@@ -43,7 +45,8 @@ class LowRankQuantizer:
     
     def quantize_activations(self, x: torch.Tensor) -> Tuple[np.ndarray, float]:
         """Quantize activations to 8-bit fixed-point"""
-        scale = torch.max(torch.abs(x)).item() / self.activation_max
+        eps = 1e-8
+        scale = max(torch.max(torch.abs(x)).item(), eps) / self.activation_max
         x_q = torch.clamp(torch.round(x / scale), 0, self.activation_max).to(torch.uint8)
         return x_q.numpy(), scale
 
@@ -73,20 +76,22 @@ class LowRankCircuitONNX(nn.Module):
         
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
-        Compute y = A(B^T x) using low-rank structure.
+        Compute y = BA^T x using low-rank structure.
         This preserves the rank-r operations for the circuit.
+        LoRA update: y = x + BA^T x
+        Here we compute just the LoRA delta: BA^T x
         """
         # Reshape input
         batch_seq_len = self.batch_size * self.seq_len
         hidden_dim = x.shape[1] // batch_seq_len
         x_3d = x.view(self.batch_size, self.seq_len, hidden_dim)
         
-        # Step 1: Compute z = B^T x (shape: [batch, seq, rank])
-        # B_q has shape [out_dim, rank], so B^T has shape [rank, out_dim]
-        z = x_3d @ self.B_q.T  # [batch, seq, hidden] @ [hidden, rank] = [batch, seq, rank]
+        # For LoRA: A has shape [hidden_dim, rank], B has shape [rank, out_dim]
+        # Step 1: Compute z = x @ A (shape: [batch, seq, rank])
+        z = x_3d @ self.A_q  # [batch, seq, hidden] @ [hidden, rank] = [batch, seq, rank]
         
-        # Step 2: Compute y = Az (shape: [batch, seq, out_dim])
-        y = z @ self.A_q.T  # [batch, seq, rank] @ [rank, out_dim] = [batch, seq, out_dim]
+        # Step 2: Compute y = z @ B (shape: [batch, seq, out_dim])
+        y = z @ self.B_q  # [batch, seq, rank] @ [rank, out_dim] = [batch, seq, out_dim]
         
         # Apply scales
         y = y * self.A_scale * self.B_scale
@@ -268,7 +273,7 @@ def export_optimized_lora_circuit(
     delta_config = base_handler.create_delta_circuit_config(base_commitment)
     
     # Export ONNX model
-    safe_name = submodule_name.replace(".", "_").replace("/", "_")
+    safe_name = re.sub(r'[^\w\-_]', '_', submodule_name)
     onnx_path = os.path.join(output_dir, f"{safe_name}_optimized.onnx")
     
     x_tensor = torch.from_numpy(x_data).float().view(1, -1)

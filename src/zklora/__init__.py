@@ -7,7 +7,6 @@ from .zk_proof_generator_optimized import (
 )
 from .lora_contributor_mpi import LoRAServer, LoRAServerSocket
 from .base_model_user_mpi import BaseModelClient
-from .polynomial_commit import commit_activations, verify_commitment
 
 
 __all__ = [
@@ -17,7 +16,5 @@ __all__ = [
     'LoRAServer',
     'LoRAServerSocket',
     'BaseModelClient',
-    'commit_activations',
-    'verify_commitment',
     '__version__',
 ]

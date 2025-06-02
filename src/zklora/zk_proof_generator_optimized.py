@@ -16,7 +16,27 @@ import onnx
 import onnxruntime
 import ezkl
 
-from .halo2_low_rank_chip import create_optimized_chip_for_model
+
+def create_optimized_chip_for_model(model_config: Dict, output_dir: str) -> str:
+    """
+    Stub function for creating optimized chip configuration.
+    In a real implementation, this would generate Halo2 chip definitions.
+    """
+    os.makedirs(output_dir, exist_ok=True)
+    chip_config_path = os.path.join(output_dir, "chip_config.json")
+    
+    # Create a basic chip configuration
+    chip_config = {
+        "type": "low_rank_optimized",
+        "rank": model_config.get('optimizations', {}).get('rank', 4),
+        "lookup_tables_enabled": True,
+        "batched_lookups": True
+    }
+    
+    with open(chip_config_path, 'w') as f:
+        json.dump(chip_config, f, indent=2)
+    
+    return chip_config_path
 
 
 class OptimizedProofPaths(NamedTuple):
@@ -230,54 +250,72 @@ async def generate_proofs_optimized_parallel(
     return summary
 
 
-def batch_verify_proofs_optimized(
+async def batch_verify_proofs_optimized(
     proof_dir: str = "proof_artifacts",
-    parallel: bool = True,
     verbose: bool = False
-) -> tuple[float, int]:
+) -> Dict[str, bool]:
     """
-    Optimized batch verification with parallel processing.
+    Batch verify all optimized proofs in a directory.
     
-    Verification is already fast (1-2s), but we can parallelize
-    for multiple proofs.
+    Args:
+        proof_dir: Directory containing proof artifacts
+        verbose: Whether to print detailed verification info
+        
+    Returns:
+        Dictionary mapping module names to verification results
     """
+    import ezkl
     
-    proof_files = glob.glob(os.path.join(proof_dir, "*.pf"))
+    results = {}
+    
+    # Find all proof files
+    proof_files = glob.glob(os.path.join(proof_dir, "*_optimized.pf"))
+    
     if not proof_files:
-        print(f"No proof files found in {proof_dir}.")
-        return 0.0, 0
-    
-    def verify_single(proof_file):
-        """Verify a single proof"""
-        base_name = os.path.splitext(os.path.basename(proof_file))[0]
-        names = resolve_optimized_proof_paths(proof_dir, base_name)
-        
-        start = time.time()
-        result = ezkl.verify(
-            names.proof, names.settings, names.verification_key, names.srs
-        )
-        duration = time.time() - start
-        
-        return result, duration
-    
-    start_time = time.time()
-    
-    if parallel:
-        # Parallel verification
-        with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
-            futures = [executor.submit(verify_single, pf) for pf in proof_files]
-            results = [f.result() for f in concurrent.futures.as_completed(futures)]
-    else:
-        # Sequential verification
-        results = [verify_single(pf) for pf in proof_files]
-    
-    total_time = time.time() - start_time
-    successful = sum(1 for r, _ in results if r)
+        print(f"No optimized proof files found in {proof_dir}")
+        return results
     
     if verbose:
-        print(f"Verified {successful}/{len(proof_files)} proofs in {total_time:.2f}s")
-        if parallel:
-            sequential_time = sum(d for _, d in results)
-            print(f"Parallel speedup: {sequential_time/total_time:.2f}x")
+        print(f"Found {len(proof_files)} optimized proof files to verify")
     
-    return total_time, successful 
+    for proof_file in proof_files:
+        base_name = os.path.basename(proof_file).replace("_optimized.pf", "")
+        
+        try:
+            # Get associated files
+            settings_file = os.path.join(proof_dir, f"{base_name}_optimized_settings.json")
+            vk_file = os.path.join(proof_dir, f"{base_name}_optimized.vk")
+            srs_file = os.path.join(proof_dir, f"{base_name}_optimized.srs")
+            
+            # Check if all files exist
+            if not all(os.path.exists(f) for f in [settings_file, vk_file, srs_file]):
+                if verbose:
+                    print(f"Missing files for {base_name}, skipping verification")
+                results[base_name] = False
+                continue
+            
+            # Verify the proof
+            is_valid = await ezkl.verify(
+                proof_path=proof_file,
+                settings_path=settings_file,
+                vk_path=vk_file,
+                srs_path=srs_file,
+            )
+            
+            results[base_name] = is_valid
+            
+            if verbose:
+                status = "VALID" if is_valid else "INVALID"
+                print(f"Proof for {base_name}: {status}")
+                
+        except Exception as e:
+            if verbose:
+                print(f"Error verifying {base_name}: {e}")
+            results[base_name] = False
+    
+    # Summary
+    valid_count = sum(1 for v in results.values() if v)
+    if verbose:
+        print(f"\nVerification complete: {valid_count}/{len(results)} proofs valid")
+    
+    return results 

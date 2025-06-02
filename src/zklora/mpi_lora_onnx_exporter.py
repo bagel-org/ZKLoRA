@@ -101,7 +101,6 @@ def export_lora_onnx_json_mpi(
     B = B_mod.weight.detach().cpu().float()
 
     try:
-        from .mpi_lora_onnx_exporter import normalize_lora_matrices_mpi
         A_fixed, B_fixed, in_dim, rank, out_dim = normalize_lora_matrices_mpi(A, B, x_data)
     except ValueError as e:
         if verbose:
