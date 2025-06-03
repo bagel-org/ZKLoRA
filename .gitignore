@@ -2,8 +2,6 @@
 *venv
 __pycache__
 *.log
-
-# Testing and Coverage
 .pytest_cache/
 .coverage
 htmlcov/
