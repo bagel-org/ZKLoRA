@@ -1,0 +1,87 @@
+---
+description: Generate minimal, self‑explaining Python that follows Clean Code.
+globs:
+  - "**/*.py"
+alwaysApply: true
+---
+
+## Goals
+
+* Minimize lines changed and files touched.
+* Code must read as prose; names and structure should eliminate the need for commentary.
+* Prefer composable, pure functions; classes only when state or polymorphism is essential.
+* Never sacrifice clarity for brevity.
+* Keep line width ≤ 80 characters; minimize vertical length while maintaining readability.
+
+## Documentation Policy (Strict)
+
+Only write documentation that conveys information unobvious from the code itself.
+
+Allowed (concise docstrings fewer than five lines):
+* invariants or algebraic laws
+* side‑effects or required ordering with external systems
+* references to external specifications or RFCs
+
+Forbidden:
+* restating parameters, returns, or implementation steps
+* boilerplate headings like Args, Parameters, Returns, Raises, Example
+* inline `#` comments repeating what the code states
+
+The cursor engine deletes, on sight:
+1. Any triple‑quoted string whose first non‑blank line starts with `"""` followed by a 
+   capital letter. If the total length exceeds five lines it is always removed.
+2. Any inline comment beginning with `#` where the remaining text duplicates or 
+   trivially describes identifiers on that line.
+
+## Interaction Strategy
+
+* First output a **PLAN** (high‑level steps, affected files), wait for confirmation, 
+  then apply only the confirmed step. Create new files only when explicitly requested
+  or when necessary for code organization and LLM context management.
+* Disable auto "iterate on lints" behaviour; fix linter issues only when explicitly 
+  requested.
+* Keep context lean: open and modify only user‑specified files; resync the code 
+  index before large edits.
+* Encourage Notepads for recurring prompts to keep chats short.
+
+## Style & Structure
+
+* Explicit names that encode intent; avoid abbreviations and useless prefixes/suffixes.
+* snake\_case for functions and variables, PascalCase for classes.
+* Module‑level constants in SCREAMING\_SNAKE.
+* Each function does one thing, returns one thing, and is ≤ 25 lines.
+* Keep dependency graph acyclic; utilities live in `utils.py`, not in callers.
+* Split files when they exceed LLM context windows or become too complex.
+
+## Language Features
+
+* Default to Python 3.12.
+* `from __future__ import annotations` for postponed type hints.
+* Annotate public function signatures and class attributes.
+* Use `dataclass` or `NamedTuple` for simple aggregates.
+* Prefer `match` over ≥ 3‑branch `if` ladders.
+
+## Error Handling
+
+* Raise the narrowest builtin exception that communicates intent.
+* Never swallow exceptions; re‑raise with context using `raise … from err`.
+* Guard external I/O with try/except + logging; keep business logic free of prints.
+
+## Testing Hooks
+
+* Functions performing I/O accept injectable dependencies (file‑like objects or 
+  strategy callables).
+* Side‑effectful functions are named accordingly (e.g., `save_report`).
+
+## Forbidden
+
+* Wildcard imports, magic numbers, global mutable state, commented‑out code, TODOs.
+* Generating documentation or comments that repeat the code.
+* Docstrings that do not meet the **Allowed** criteria.
+* Inline comments that merely narrate obvious behaviour.
+* Creating new files without explicit request or clear necessity.
+
+## Transformations
+
+During refactors the engine automatically strips any docstring or inline comment 
+violating these rules, and enforces the Interaction Strategy above.
