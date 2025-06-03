@@ -1,6 +1,4 @@
-"""
-Halo2 wrapper for ZKLoRA that replaces EZKL functionality.
-"""
+"""Halo2 wrapper for ZKLoRA zero-knowledge proof generation."""
 from __future__ import annotations
 
 import json

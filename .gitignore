@@ -3,6 +3,13 @@
 __pycache__
 *.log
 
+# Testing and Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+.coverage.*
+
 # Development environments
 .vscode
 .DS_Store
@@ -21,8 +28,6 @@ data
 lora_onnx_params
 intermediate_activations
 proof_artifacts
-*.ezkl
-*.srs
 input.json
 witness.json
 proof.json

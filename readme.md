@@ -328,7 +328,6 @@ ZKLoRA is built upon these outstanding open source projects:
 | [Transformers](https://github.com/huggingface/transformers) | State-of-the-art Natural Language Processing |
 | [dusk-merkle](https://github.com/dusk-network/dusk-merkle) | Merkle tree implementation in Rust |
 | [BLAKE3](https://github.com/BLAKE3-team/BLAKE3) | Cryptographic hash function |
-| [EZKL](https://github.com/zkonduit/ezkl) | Zero-knowledge proof system for neural networks |
 | [ONNX Runtime](https://github.com/microsoft/onnxruntime) | Cross-platform ML model inference |
 
 <hr>
