@@ -5,7 +5,7 @@ import json
 import numpy as np
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
-from .libs.zklora_halo2 import generate_proof, verify_proof
+import zklora_halo2
 
 def flatten_matrix(matrix: List[List[float]]) -> List[float]:
     """Flatten a 2D matrix into a 1D list."""
@@ -96,7 +96,7 @@ class Halo2Prover:
             self.settings = settings
             
         # Generate proof using Rust implementation
-        proof_data = generate_proof(
+        proof_data = zklora_halo2.generate_proof(
             flatten_matrix(witness["input"]),
             flatten_matrix(witness["weight_a"]),
             flatten_matrix(witness["weight_b"])
@@ -128,7 +128,7 @@ class Halo2Prover:
             public_inputs = []
             
         # Verify using Rust implementation
-        return verify_proof(proof_data, public_inputs)
+        return zklora_halo2.verify_proof(proof_data, public_inputs)
         
     def mock(self,
             witness: Dict,

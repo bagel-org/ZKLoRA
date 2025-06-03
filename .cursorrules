@@ -80,6 +80,7 @@ The cursor engine deletes, on sight:
 * Docstrings that do not meet the **Allowed** criteria.
 * Inline comments that merely narrate obvious behaviour.
 * Creating new files without explicit request or clear necessity.
+* Deleting or disabling code to make tests pass; fix the underlying issue instead.
 
 ## Transformations
 
