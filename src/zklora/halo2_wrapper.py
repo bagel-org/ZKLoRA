@@ -114,7 +114,7 @@ class Halo2Prover:
     async def verify(self,
                     proof_path: Path,
                     settings: Optional[Dict] = None,
-                    public_inputs: Optional[Dict] = None) -> bool:
+                    public_inputs: Optional[List[float]] = None) -> bool:
         """Verify a proof."""
         if settings is not None:
             self.settings = settings
@@ -123,8 +123,11 @@ class Halo2Prover:
         with open(proof_path, 'rb') as f:
             proof_data = f.read()
             
-        # Get public inputs
+        # Get public inputs (expected outputs)
         if public_inputs is None:
+            # When no public inputs are provided, pass an empty list
+            # The Rust verify_proof function will extract the expected output
+            # from the proof data itself
             public_inputs = []
             
         # Verify using Rust implementation

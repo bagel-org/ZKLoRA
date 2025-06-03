@@ -1,9 +1,12 @@
 use halo2_proofs::{
-    arithmetic::Field,
     circuit::{Layouter, SimpleFloorPlanner, Value},
     plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Instance, Selector},
     poly::Rotation,
+    pasta::Fp,
 };
+use ff::Field;
+
+use crate::quantize_to_field;
 
 #[derive(Clone)]
 pub struct LoRAConfig {
@@ -21,7 +24,7 @@ pub struct LoRACircuit {
     pub weight_b: Vec<f64>,
 }
 
-impl Circuit<halo2_proofs::pasta::Fp> for LoRACircuit {
+impl Circuit<Fp> for LoRACircuit {
     type Config = LoRAConfig;
     type FloorPlanner = SimpleFloorPlanner;
 
@@ -29,7 +32,7 @@ impl Circuit<halo2_proofs::pasta::Fp> for LoRACircuit {
         Self::default()
     }
 
-    fn configure(meta: &mut ConstraintSystem<halo2_proofs::pasta::Fp>) -> Self::Config {
+    fn configure(meta: &mut ConstraintSystem<Fp>) -> Self::Config {
         let input = meta.advice_column();
         let weight_a = meta.advice_column();
         let weight_b = meta.advice_column();
@@ -64,27 +67,27 @@ impl Circuit<halo2_proofs::pasta::Fp> for LoRACircuit {
     fn synthesize(
         &self,
         config: Self::Config,
-        mut layouter: impl Layouter<halo2_proofs::pasta::Fp>,
+        mut layouter: impl Layouter<Fp>,
     ) -> Result<(), Error> {
         let input_val = if !self.input.is_empty() {
-            halo2_proofs::pasta::Fp::from(self.input[0].abs() as u64)
+            quantize_to_field(self.input[0])
         } else {
-            halo2_proofs::pasta::Fp::zero()
+            Fp::zero()
         };
 
         let weight_a_val = if !self.weight_a.is_empty() {
-            halo2_proofs::pasta::Fp::from(self.weight_a[0].abs() as u64)
+            quantize_to_field(self.weight_a[0])
         } else {
-            halo2_proofs::pasta::Fp::one()
+            Fp::one()
         };
 
         let weight_b_val = if !self.weight_b.is_empty() {
-            halo2_proofs::pasta::Fp::from(self.weight_b[0].abs() as u64)
+            quantize_to_field(self.weight_b[0])
         } else {
-            halo2_proofs::pasta::Fp::one()
+            Fp::one()
         };
 
-        let output_val = input_val * weight_a_val * weight_b_val;
+        let _output_val = input_val * weight_a_val * weight_b_val;
 
         layouter.assign_region(
             || "lora",
@@ -112,13 +115,6 @@ impl Circuit<halo2_proofs::pasta::Fp> for LoRACircuit {
                     || Value::known(weight_b_val),
                 )?;
 
-                // region.assign_advice_from_constant(
-                //     || "output",
-                //     config.output,
-                //     0,
-                //     output_val,
-                // )?;
-
                 Ok(())
             },
         )?;
@@ -140,11 +136,13 @@ mod tests {
             weight_b: vec![3.0],
         };
 
-        let expected_output = vec![halo2_proofs::pasta::Fp::from(6u64)];
+        // Expected output is 1.0 * 2.0 * 3.0 = 6.0
+        let expected_output = vec![quantize_to_field(6.0)];
         let prover = MockProver::run(4, &circuit, vec![expected_output]).unwrap();
         assert!(prover.verify().is_ok());
 
-        let wrong_output = vec![halo2_proofs::pasta::Fp::from(7u64)];
+        // Wrong output should fail
+        let wrong_output = vec![quantize_to_field(7.0)];
         let prover = MockProver::run(4, &circuit, vec![wrong_output]).unwrap();
         assert!(prover.verify().is_err());
     }
@@ -157,7 +155,8 @@ mod tests {
             weight_b: vec![],
         };
 
-        let expected_output = vec![halo2_proofs::pasta::Fp::zero()];
+        // Expected output for empty inputs is 0 * 1 * 1 = 0
+        let expected_output = vec![quantize_to_field(0.0)];
         let prover = MockProver::run(4, &circuit, vec![expected_output]).unwrap();
         assert!(prover.verify().is_ok());
     }
@@ -170,7 +169,8 @@ mod tests {
             weight_b: vec![-3.0],
         };
 
-        let expected_output = vec![halo2_proofs::pasta::Fp::from(6u64)];
+        // Expected output is abs(-1.0) * abs(-2.0) * abs(-3.0) = 6.0
+        let expected_output = vec![quantize_to_field(6.0)];
         let prover = MockProver::run(4, &circuit, vec![expected_output]).unwrap();
         assert!(prover.verify().is_ok());
     }

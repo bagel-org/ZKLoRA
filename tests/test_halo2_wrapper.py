@@ -250,17 +250,20 @@ class TestZKLoRAHalo2(unittest.TestCase):
 
         proof = zklora_halo2.generate_proof(input_data, weight_a, weight_b)
         self.assertIsInstance(proof, bytes)
-        self.assertEqual(len(proof), 32)  # Check dummy proof size
+        self.assertGreater(len(proof), 0)  # Check proof is not empty
 
-        result = zklora_halo2.verify_proof(proof, [1.0, 2.0])
+        # Expected output is input[0] * weight_a[0] * weight_b[0] = 1.0 * 3.0 * 5.0 = 15.0
+        expected_output = 1.0 * 3.0 * 5.0
+        result = zklora_halo2.verify_proof(proof, [expected_output])
         self.assertTrue(result)
 
     def test_empty_inputs(self):
         proof = zklora_halo2.generate_proof([], [], [])
         self.assertIsInstance(proof, bytes)
-        self.assertEqual(len(proof), 32)
+        self.assertGreater(len(proof), 0)  # Check proof is not empty
 
-        result = zklora_halo2.verify_proof(proof, [])
+        # Expected output for empty inputs is 0 * 1 * 1 = 0
+        result = zklora_halo2.verify_proof(proof, [0.0])
         self.assertTrue(result)
 
     def test_large_inputs(self):
@@ -270,9 +273,11 @@ class TestZKLoRAHalo2(unittest.TestCase):
 
         proof = zklora_halo2.generate_proof(input_data, weight_a, weight_b)
         self.assertIsInstance(proof, bytes)
-        self.assertEqual(len(proof), 32)
+        self.assertGreater(len(proof), 0)  # Check proof is not empty
 
-        result = zklora_halo2.verify_proof(proof, input_data)
+        # Expected output is input[0] * weight_a[0] * weight_b[0] = 0.0 * 100.0 * 200.0 = 0.0
+        expected_output = 0.0 * 100.0 * 200.0
+        result = zklora_halo2.verify_proof(proof, [expected_output])
         self.assertTrue(result)
 
     def test_negative_inputs(self):
@@ -282,9 +287,11 @@ class TestZKLoRAHalo2(unittest.TestCase):
 
         proof = zklora_halo2.generate_proof(input_data, weight_a, weight_b)
         self.assertIsInstance(proof, bytes)
-        self.assertEqual(len(proof), 32)
+        self.assertGreater(len(proof), 0)  # Check proof is not empty
 
-        result = zklora_halo2.verify_proof(proof, input_data)
+        # Expected output is abs(input[0]) * abs(weight_a[0]) * abs(weight_b[0]) = 1.0 * 3.0 * 5.0 = 15.0
+        expected_output = 1.0 * 3.0 * 5.0
+        result = zklora_halo2.verify_proof(proof, [expected_output])
         self.assertTrue(result)
 
 if __name__ == '__main__':
