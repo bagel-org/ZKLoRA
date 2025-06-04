@@ -53,9 +53,9 @@ jobs:
 
     - name: Run tests
       run: |
-        ./scripts/test_with_coverage.sh
-
-    - name: Upload coverage
-      uses: codecov/codecov-action@v3
-      with:
-        fail_ci_if_error: true 
+        # Run Python tests with coverage report in terminal
+        python -m pytest tests/ -v --cov=src/zklora --cov-report=term-missing
+        
+        # Run Rust tests
+        cd src/zklora/libs/zklora_halo2
+        cargo test --release -- --nocapture 
