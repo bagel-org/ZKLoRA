@@ -14,6 +14,12 @@ dependencies = [
     "numpy>=1.21.0",
     "onnx>=1.12.0",
     "onnxruntime>=1.12.0",
+    "blake3>=0.3.3",
+    "torch>=2.0.0",
+    "transformers>=4.30.0",
+    "peft>=0.4.0",
+    "merklelib>=0.2.2",
+    "merkly~=1.0.0",
 ]
 
 [project.optional-dependencies]
@@ -26,16 +32,18 @@ test = [
 [tool.maturin]
 python-source = "src"
 features = ["pyo3/extension-module"]
-module-name = "zklora.libs.zklora_halo2"
+module-name = "zklora.zklora_halo2"
+bindings = "pyo3"
+manifest-path = "src/zklora/libs/zklora_halo2/Cargo.toml"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-addopts = "--cov=zklora --cov-report=html --cov-report=term-missing"
+addopts = "--cov=src/zklora --cov-report=term-missing"
 
 [tool.coverage.run]
-source = ["zklora"]
+source = ["src/zklora"]
 omit = [
     "tests/*",
     "**/__init__.py",

@@ -1,0 +1,11 @@
+[package]
+name = "zklora"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "zklora"
+path = "src/zklora/libs/zklora_halo2/src/lib.rs"
+
+[workspace]
+members = ["src/zklora/libs/zklora_halo2"] 
