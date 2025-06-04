@@ -7,6 +7,9 @@ __pycache__
 htmlcov/
 coverage.xml
 .coverage.*
+pytest_output.txt
+tarpaulin-report.html
+cargo_test_output.txt
 
 # Development environments
 .vscode
@@ -50,3 +53,17 @@ build/
 *.egg
 *.whl
 .pypirc
+
+# Test artifacts
+.tox/
+.pytest_cache/
+*.pyc
+__pycache__/
+.hypothesis/
+.coverage.*
+coverage/
+.coverage
+coverage.xml
+nosetests.xml
+coverage.lcov
+.tarpaulin-report.html

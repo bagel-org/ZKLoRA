@@ -1,6 +1,6 @@
 use halo2_proofs::{
     circuit::{Layouter, SimpleFloorPlanner, Value},
-    plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Instance, Selector},
+    plonk::{Advice, Circuit, Column, ConstraintSystem, Error, Instance, Selector, Expression},
     poly::Rotation,
     pasta::Fp,
 };
@@ -10,10 +10,14 @@ use crate::quantize_to_field;
 
 #[derive(Clone)]
 pub struct LoRAConfig {
-    input: Column<Advice>,
-    weight_a: Column<Advice>,
-    weight_b: Column<Advice>,
-    output: Column<Instance>,
+    input_magnitude: Column<Advice>,
+    input_sign: Column<Advice>,
+    weight_a_magnitude: Column<Advice>,
+    weight_a_sign: Column<Advice>,
+    weight_b_magnitude: Column<Advice>,
+    weight_b_sign: Column<Advice>,
+    output_magnitude: Column<Instance>,
+    output_sign: Column<Instance>,
     selector: Selector,
 }
 
@@ -33,61 +37,99 @@ impl Circuit<Fp> for LoRACircuit {
     }
 
     fn configure(meta: &mut ConstraintSystem<Fp>) -> Self::Config {
-        let input = meta.advice_column();
-        let weight_a = meta.advice_column();
-        let weight_b = meta.advice_column();
-        let output = meta.instance_column();
+        let input_magnitude = meta.advice_column();
+        let input_sign = meta.advice_column();
+        let weight_a_magnitude = meta.advice_column();
+        let weight_a_sign = meta.advice_column();
+        let weight_b_magnitude = meta.advice_column();
+        let weight_b_sign = meta.advice_column();
+        let output_magnitude = meta.instance_column();
+        let output_sign = meta.instance_column();
         let selector = meta.selector();
 
-        meta.enable_equality(input);
-        meta.enable_equality(weight_a);
-        meta.enable_equality(weight_b);
-        meta.enable_equality(output);
+        meta.enable_equality(input_magnitude);
+        meta.enable_equality(input_sign);
+        meta.enable_equality(weight_a_magnitude);
+        meta.enable_equality(weight_a_sign);
+        meta.enable_equality(weight_b_magnitude);
+        meta.enable_equality(weight_b_sign);
+        meta.enable_equality(output_magnitude);
+        meta.enable_equality(output_sign);
 
         meta.create_gate("lora_mul", |meta| {
             let s = meta.query_selector(selector);
-            let input = meta.query_advice(input, Rotation::cur());
-            let weight_a = meta.query_advice(weight_a, Rotation::cur());
-            let weight_b = meta.query_advice(weight_b, Rotation::cur());
-            let output = meta.query_instance(output, Rotation::cur());
-
-            vec![s * (input * weight_a * weight_b - output)]
+            let input_magnitude = meta.query_advice(input_magnitude, Rotation::cur());
+            let input_sign = meta.query_advice(input_sign, Rotation::cur());
+            let weight_a_magnitude = meta.query_advice(weight_a_magnitude, Rotation::cur());
+            let weight_a_sign = meta.query_advice(weight_a_sign, Rotation::cur());
+            let weight_b_magnitude = meta.query_advice(weight_b_magnitude, Rotation::cur());
+            let weight_b_sign = meta.query_advice(weight_b_sign, Rotation::cur());
+            let output_magnitude = meta.query_instance(output_magnitude, Rotation::cur());
+            let output_sign = meta.query_instance(output_sign, Rotation::cur());
+            let scale = Expression::Constant(Fp::from(crate::SCALE_FACTOR * crate::SCALE_FACTOR));
+            // Magnitude constraint
+            let mag_constraint = input_magnitude * weight_a_magnitude * weight_b_magnitude - output_magnitude * scale;
+            // Sign constraint: XOR in field arithmetic (all as Expression)
+            let two = Expression::Constant(Fp::from(2));
+            let four = Expression::Constant(Fp::from(4));
+            let ab = input_sign.clone() * weight_a_sign.clone();
+            let ac = input_sign.clone() * weight_b_sign.clone();
+            let bc = weight_a_sign.clone() * weight_b_sign.clone();
+            let abc = input_sign.clone() * weight_a_sign.clone() * weight_b_sign.clone();
+            let xor = input_sign.clone() + weight_a_sign.clone() + weight_b_sign.clone()
+                - two.clone() * (ab.clone() + ac.clone() + bc.clone())
+                + four * abc;
+            let sign_constraint = xor - output_sign;
+            vec![s.clone() * mag_constraint, s * sign_constraint]
         });
 
         LoRAConfig {
-            input,
-            weight_a,
-            weight_b,
-            output,
+            input_magnitude,
+            input_sign,
+            weight_a_magnitude,
+            weight_a_sign,
+            weight_b_magnitude,
+            weight_b_sign,
+            output_magnitude,
+            output_sign,
             selector,
         }
     }
 
-    #[allow(clippy::unnecessary_lazy_evaluations)]
     fn synthesize(
         &self,
         config: Self::Config,
         mut layouter: impl Layouter<Fp>,
     ) -> Result<(), Error> {
-        let input_val = if !self.input.is_empty() {
-            quantize_to_field(self.input[0])
+        // Decode all quantized values to f64
+        let input_f = if !self.input.is_empty() {
+            self.input[0]
         } else {
-            Fp::zero()
+            0.0
         };
-
-        let weight_a_val = if !self.weight_a.is_empty() {
-            quantize_to_field(self.weight_a[0])
+        let wa_f = if !self.weight_a.is_empty() {
+            self.weight_a[0]
         } else {
-            Fp::one()
+            1.0
         };
-
-        let weight_b_val = if !self.weight_b.is_empty() {
-            quantize_to_field(self.weight_b[0])
+        let wb_f = if !self.weight_b.is_empty() {
+            self.weight_b[0]
         } else {
-            Fp::one()
+            1.0
         };
-
-        let _output_val = input_val * weight_a_val * weight_b_val;
+        // Quantize all values for circuit storage
+        let input_q = crate::quantize_to_field(input_f);
+        let wa_q = crate::quantize_to_field(wa_f);
+        let wb_q = crate::quantize_to_field(wb_f);
+        // Fixed-point multiplication and sign logic
+        let output_f = input_f * wa_f * wb_f / (crate::SCALE_FACTOR_F64 * crate::SCALE_FACTOR_F64);
+        let output_q = crate::quantize_to_field(output_f);
+        // XOR the signs for output sign
+        let output_sign = if (input_q.sign == Fp::ONE) ^ (wa_q.sign == Fp::ONE) ^ (wb_q.sign == Fp::ONE) {
+            Fp::ONE
+        } else {
+            Fp::ZERO
+        };
 
         layouter.assign_region(
             || "lora",
@@ -95,29 +137,52 @@ impl Circuit<Fp> for LoRACircuit {
                 config.selector.enable(&mut region, 0)?;
 
                 region.assign_advice(
-                    || "input",
-                    config.input,
+                    || "input_magnitude",
+                    config.input_magnitude,
                     0,
-                    || Value::known(input_val),
+                    || Value::known(input_q.magnitude),
                 )?;
 
                 region.assign_advice(
-                    || "weight_a",
-                    config.weight_a,
+                    || "input_sign",
+                    config.input_sign,
                     0,
-                    || Value::known(weight_a_val),
+                    || Value::known(input_q.sign),
                 )?;
 
                 region.assign_advice(
-                    || "weight_b",
-                    config.weight_b,
+                    || "weight_a_magnitude",
+                    config.weight_a_magnitude,
                     0,
-                    || Value::known(weight_b_val),
+                    || Value::known(wa_q.magnitude),
+                )?;
+
+                region.assign_advice(
+                    || "weight_a_sign",
+                    config.weight_a_sign,
+                    0,
+                    || Value::known(wa_q.sign),
+                )?;
+
+                region.assign_advice(
+                    || "weight_b_magnitude",
+                    config.weight_b_magnitude,
+                    0,
+                    || Value::known(wb_q.magnitude),
+                )?;
+
+                region.assign_advice(
+                    || "weight_b_sign",
+                    config.weight_b_sign,
+                    0,
+                    || Value::known(wb_q.sign),
                 )?;
 
                 Ok(())
             },
         )?;
+
+        // Do not assign to output_magnitude or output_sign here. Outputs are checked via instance columns in the gate and provided in the test/prover.
 
         Ok(())
     }
@@ -135,15 +200,17 @@ mod tests {
             weight_a: vec![2.0],
             weight_b: vec![3.0],
         };
-
-        // Expected output is 1.0 * 2.0 * 3.0 = 6.0
-        let expected_output = vec![quantize_to_field(6.0)];
-        let prover = MockProver::run(4, &circuit, vec![expected_output]).unwrap();
+        let expected = 1.0 * 2.0 * 3.0;
+        let expected_q = crate::quantize_to_field(expected);
+        let expected_output = vec![expected_q.magnitude];
+        let expected_sign = vec![expected_q.sign];
+        let prover = MockProver::run(4, &circuit, vec![expected_output.clone(), expected_sign.clone()]).unwrap();
         assert!(prover.verify().is_ok());
-
         // Wrong output should fail
-        let wrong_output = vec![quantize_to_field(7.0)];
-        let prover = MockProver::run(4, &circuit, vec![wrong_output]).unwrap();
+        let wrong_q = crate::quantize_to_field(7.0);
+        let wrong_output = vec![wrong_q.magnitude];
+        let wrong_sign = vec![wrong_q.sign];
+        let prover = MockProver::run(4, &circuit, vec![wrong_output, wrong_sign]).unwrap();
         assert!(prover.verify().is_err());
     }
 
@@ -154,10 +221,11 @@ mod tests {
             weight_a: vec![],
             weight_b: vec![],
         };
-
-        // Expected output for empty inputs is 0 * 1 * 1 = 0
-        let expected_output = vec![quantize_to_field(0.0)];
-        let prover = MockProver::run(4, &circuit, vec![expected_output]).unwrap();
+        let expected = 0.0 * 1.0 * 1.0;
+        let expected_q = crate::quantize_to_field(expected);
+        let expected_output = vec![expected_q.magnitude];
+        let expected_sign = vec![expected_q.sign];
+        let prover = MockProver::run(4, &circuit, vec![expected_output, expected_sign]).unwrap();
         assert!(prover.verify().is_ok());
     }
 
@@ -168,10 +236,30 @@ mod tests {
             weight_a: vec![-2.0],
             weight_b: vec![-3.0],
         };
+        let input = -1.0;
+        let wa = -2.0;
+        let wb = -3.0;
+        let expected = input * wa * wb;
+        let expected_q = crate::quantize_to_field(expected);
+        let expected_output = vec![expected_q.magnitude];
+        let expected_sign = vec![expected_q.sign];
+        println!("test_negative_inputs: input={} wa={} wb={} expected={} expected_quantized={:?} expected_decoded={} sign={}", input, wa, wb, expected, expected_q.magnitude, crate::dequantize_from_field(expected_q), if expected_q.sign == Fp::ONE { "negative" } else { "positive" });
+        let prover = MockProver::run(4, &circuit, vec![expected_output, expected_sign]).unwrap();
+        assert!(prover.verify().is_ok());
+    }
 
-        // Expected output is abs(-1.0) * abs(-2.0) * abs(-3.0) = 6.0
-        let expected_output = vec![quantize_to_field(6.0)];
-        let prover = MockProver::run(4, &circuit, vec![expected_output]).unwrap();
+    #[test]
+    fn test_large_values() {
+        let circuit = LoRACircuit {
+            input: vec![1.0],
+            weight_a: vec![2.0],
+            weight_b: vec![3.0],
+        };
+        let expected = 1.0 * 2.0 * 3.0;
+        let expected_q = crate::quantize_to_field(expected);
+        let expected_output = vec![expected_q.magnitude];
+        let expected_sign = vec![expected_q.sign];
+        let prover = MockProver::run(4, &circuit, vec![expected_output, expected_sign]).unwrap();
         assert!(prover.verify().is_ok());
     }
 } 

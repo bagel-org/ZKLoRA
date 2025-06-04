@@ -183,3 +183,11 @@ class ZKProofGenerator:
     def get_proof_path(self, proof_id: str) -> Path:
         """Get the path for a proof file."""
         return self.out_dir / f"{proof_id}.proof"
+
+    async def verify_proofs(self, proof_paths: List[Path]) -> bool:
+        """Verify multiple proofs."""
+        results = []
+        for path in proof_paths:
+            result = await self.verify_proof(path)
+            results.append(result)
+        return all(results)

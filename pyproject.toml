@@ -32,7 +32,7 @@ test = [
 [tool.maturin]
 python-source = "src"
 features = ["pyo3/extension-module"]
-module-name = "zklora_halo2"
+module-name = "zklora.zklora_halo2"
 bindings = "pyo3"
 manifest-path = "src/zklora/libs/zklora_halo2/Cargo.toml"
 

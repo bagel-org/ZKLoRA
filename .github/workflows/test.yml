@@ -11,33 +11,45 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [3.8, 3.9, "3.10"]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
 
     - name: Set up Rust
       uses: actions-rs/toolchain@v1
       with:
-        toolchain: nightly
+        toolchain: nightly-2024-02-01  # Pin to a specific nightly for reproducibility
         override: true
         components: rustfmt, clippy
+        target: x86_64-unknown-linux-gnu
 
-    - name: Install dependencies
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential
+
+    - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
+        pip install maturin pytest pytest-cov pytest-asyncio
         pip install -e ".[test]"
+
+    - name: Build Rust extension
+      run: |
+        cd src/zklora/libs/zklora_halo2
+        maturin develop --release
 
     - name: Run tests
       run: |
         ./scripts/test_with_coverage.sh
 
     - name: Upload coverage
-      uses: codecov/codecov-action@v2
+      uses: codecov/codecov-action@v3
       with:
         fail_ci_if_error: true 
