@@ -1,0 +1,61 @@
+name: Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: nightly-2024-02-01  # Pin to a specific nightly for reproducibility
+        override: true
+        components: rustfmt, clippy
+        target: x86_64-unknown-linux-gnu
+
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y build-essential
+
+    - name: Create and activate virtual environment
+      run: |
+        python -m venv .venv
+        echo "VIRTUAL_ENV=$GITHUB_WORKSPACE/.venv" >> $GITHUB_ENV
+        echo "$GITHUB_WORKSPACE/.venv/bin" >> $GITHUB_PATH
+
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install maturin pytest pytest-cov pytest-asyncio
+        pip install -e ".[test]"
+
+    - name: Build Rust extension
+      run: |
+        cd src/zklora/libs/zklora_halo2
+        maturin develop --release
+
+    - name: Run tests
+      run: |
+        # Run Python tests with coverage report in terminal
+        python -m pytest tests/ -v --cov=src/zklora --cov-report=term-missing
+        
+        # Run Rust tests
+        cd src/zklora/libs/zklora_halo2
+        cargo test --release -- --nocapture 

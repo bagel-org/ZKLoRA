@@ -2,6 +2,14 @@
 *venv
 __pycache__
 *.log
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+.coverage.*
+pytest_output.txt
+tarpaulin-report.html
+cargo_test_output.txt
 
 # Development environments
 .vscode
@@ -21,8 +29,6 @@ data
 lora_onnx_params
 intermediate_activations
 proof_artifacts
-*.ezkl
-*.srs
 input.json
 witness.json
 proof.json
@@ -47,3 +53,49 @@ build/
 *.egg
 *.whl
 .pypirc
+
+# Test artifacts
+.tox/
+.pytest_cache/
+*.pyc
+__pycache__/
+.hypothesis/
+.coverage.*
+coverage/
+.coverage
+coverage.xml
+nosetests.xml
+coverage.lcov
+.tarpaulin-report.html
+
+# Binary files and compiled artifacts
+*.so
+*.dylib
+*.dll
+*.pyd
+*.o
+*.a
+*.lib
+*.exp
+*.bin
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+*.dSYM/
+*.su
+*.idb
+*.pdb
+*.class
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+*.msi
+*.msm
+*.msp
